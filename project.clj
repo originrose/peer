@@ -1,21 +1,20 @@
-(defproject peer "0.1.0-SNAPSHOT"
-  :description "P2P - ClojureScript style"
-  :min-lein-version "2.0.0"
-  :repositories {"sonatype-oss-public" "https://oss.sonatype.org/content/groups/public/"}
-  :dependencies [[org.clojure/clojure             "1.5.1"]
-                 [org.clojure/clojurescript       "0.0-1913"]
-                 [org.clojure/core.async          "0.1.242.0-44b1e3-alpha"]
-                 [prismatic/dommy                 "0.1.1"]
-                 [org.clojure/data.json           "0.2.1"]
+(defproject thinktopic/peer "0.1.0-SNAPSHOT"
+  :description "P2P - Clojure(Script) style"
+  :dependencies [[org.clojure/clojure "1.9.0-alpha9"]
+                 [http-kit "2.1.18"]
+                 [jarohen/chord "0.7.0" :exclusions [org.clojure/tools.reader]]
+                 ;[com.stuartsierra/component "0.2.3"]
+
+                 [org.clojure/clojurescript "1.9.89"]
+                 [org.clojure/core.async "0.2.385"]
+                 [prismatic/dommy                 "1.1.0"]
+                 [org.clojure/data.json           "0.2.6"]
                  [crate                           "0.2.4"]
-                 [com.cemerick/clojurescript.test "0.0.4"]]
 
-
-  :test-paths ["src/test/clojure"]
+                 ]
 
   :hooks [leiningen.cljsbuild]
-
-  :plugins [[lein-cljsbuild "0.3.4"]]
+  :plugins [[lein-cljsbuild "1.1.3"]]
 
   :cljsbuild {:builds [{:id "whitespace"
                         :source-paths ["src"]
