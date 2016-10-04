@@ -26,15 +26,15 @@
 
 (defonce clients* (atom {}))
 
-(defmulti event-handler (fn [machine req] (:event req)))
-(defmulti rpc-handler (fn [machine req] (:method req)))
+(defmulti event-handler (fn [req] (:event req)))
+(defmulti rpc-handler (fn [req] (:method req)))
 
 (defmethod event-handler :default
-  [machine req]
+  [req]
   (println "Unhandled net-event: " req))
 
 (defmethod rpc-handler :default
-  [machine req]
+  [req]
   (println "Unhandled rpc-call: " req))
 
 (defn mapply
@@ -46,33 +46,26 @@
   (apply f (apply concat (butlast args) (last args))))
 
 (defmethod event-handler :rpc
-  [machine {:keys [chan id] :as req}]
+  [{:keys [chan id] :as req}]
   (go
-    (let [v (rpc-handler machine req)
+    (let [v (rpc-handler req)
           res (if (satisfies? clojure.core.async.impl.protocols/ReadPort v)
                 (<! v)
                 v)]
       (>! chan {:event :rpc-response :id id :result res}))))
 
-;(defmethod rpc-handler :view-features
-;  [machine req]
-;  (println "sending features: "
-;           (type (:weights (first (:modules (first (vals (:networks @machine)))))))
-;           (mat/shape (:weights (first (:modules (first (vals (:networks @machine))))))))
-;  (:weights (first (:modules (first (vals (:networks @machine)))))))
-
 ;; Some experimental reflection capabilities to power code browser, editor,
 ;; repl, experiment platform.
 (defmethod rpc-handler :namespaces
-  [machine req]
+  [req]
   (sort (map ns-name (all-ns))))
 
 (defmethod rpc-handler :ns-vars
-  [machine {:keys [args]}]
+  [{:keys [args]}]
   (keys (ns-publics (:ns args))))
 
 (defmethod rpc-handler :var-info
-  [machine {:keys [args]}]
+  [{:keys [args]}]
   (let [src (repl/source-fn (symbol (str (:ns args)) (str (:var args))))]
     (println "got source: " src)
     src))
@@ -85,7 +78,7 @@
 
 (defn client-listener
   "Setup a listener go-loop to receive messages from a client."
-  [machine client-id client-chan]
+  [client-id client-chan]
   (go-loop []
     (let [{:keys [message error]} (<! client-chan)]
       (if error
@@ -96,13 +89,13 @@
         (do
           (when message
             (println message)
-            (event-handler machine (assoc message
+            (event-handler  (assoc message
                                       :client-id client-id
                                       :chan (get @clients* client-id)))
             (recur)))))))
 
 (defn connect-client
-  [machine req]
+  [req]
   (with-channel req ws-ch {:format :fressian}
     (go
       (let [{:keys [message error]} (<! ws-ch)]
@@ -111,5 +104,5 @@
           (let [client-id (:client-id message)]
             (swap! clients* assoc client-id ws-ch)
             (>! ws-ch {:type :connect-reply :success true})
-            (client-listener machine client-id ws-ch)))))))
+            (client-listener client-id ws-ch)))))))
 
