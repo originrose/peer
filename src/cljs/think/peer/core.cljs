@@ -1,7 +1,7 @@
 (ns peer.core
   (:require-macros
     [cljs.core.async.macros :refer [go alt!]]
-    [dommy.macros           :refer [node sel sel1]])
+    [dommy.core             :refer [sel sel1]])
   (:require
     [cljs.core.async :refer (chan >! <! put! timeout close!)]
     [dommy.core :as dom]))
