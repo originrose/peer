@@ -13,6 +13,8 @@
 
 (enable-console-print!)
 
+(def DEFAULT-HOST "localhost")
+(def DEFAULT-PORT 4242)
 (def RPC-TIMEOUT 3000)
 (def DISPATCH-BUFFER-SIZE 64) ; # of incoming msgs to buffer
 
@@ -97,6 +99,7 @@
   (let [rpc-events (subscribe-server-event :rpc-response)]
     (go-loop []
       (let [{:keys [id] :as event} (<! rpc-events)]
+        (log event)
         (when-let [res-chan (get @rpc-map* id)]
           (>! res-chan event)
           (swap! rpc-map* dissoc id)))

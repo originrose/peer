@@ -12,7 +12,7 @@
 (defmethod cf/formatter* :fressian [_]
   (reify cf/ChordFormatter
     (freeze [_ obj]
-      (println "writing fressian data:" (keys obj))
+      ;(println "writing fressian data:" (keys obj))
       (let [arr (fressian/write obj :handlers (mfress/array-write-handlers mikera.arrayz.impl.AbstractArray))]
         (ByteBufferInputStream. arr)))
 

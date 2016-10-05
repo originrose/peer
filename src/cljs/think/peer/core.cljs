@@ -1,4 +1,4 @@
-(ns peer.core
+(ns think.peer.core
   #_(:require
     [cljs.core.async :refer [chan >! <! put! timeout close!]
                      :refer-macros [go alt!]]))
