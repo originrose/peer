@@ -96,7 +96,7 @@
 
 (defn connect-client
   [req]
-  (with-channel req ws-ch {:format :fressian}
+  (with-channel req ws-ch ;{:format :fressian}
     (go
       (let [{:keys [message error]} (<! ws-ch)]
         (if error

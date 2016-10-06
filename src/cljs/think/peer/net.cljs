@@ -36,7 +36,8 @@
 (defn setup-websocket
   [url]
   (go
-    (let [conn (<! (ws-ch url {:format :fressian}))
+    (let [conn (<! (ws-ch url; {:format :fressian}
+                          ))
           {:keys [ws-channel error]} conn
           _ (>! ws-channel {:type :connect :client-id CLIENT-ID})
           {:keys [message error]} (<! ws-channel)]
