@@ -12,7 +12,8 @@
                  [org.clojure/core.async "0.2.391"]
                  [thinktopic/aljabr "0.1.1"]]
 
-  :plugins [[lein-figwheel "0.5.8"]]
+  :plugins [[lein-figwheel "0.5.8"]
+            [s3-wagon-private "1.2.0"]]
 
   :profiles {:dev {;:resource-paths ["dummy-data"]
                    :dependencies [[reagent "0.6.0"]]}}
@@ -43,8 +44,6 @@
                            :pretty-print  true}}
                ]}
 
-
-  :plugins [[s3-wagon-private "1.2.0"]]
 
 
   :repositories  {"snapshots"  {:url "s3p://thinktopic.jars/snapshots/"
