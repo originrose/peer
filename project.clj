@@ -12,7 +12,10 @@
                  [org.clojure/core.async "0.2.391"]
                  [thinktopic/aljabr "0.1.1"]]
 
-  :plugins [[lein-figwheel "0.5.8"]]
+  :plugins [[lein-cljsbuild "1.1.4"]
+            [lein-figwheel "0.5.8"]]
+
+  :hooks [leiningen.cljsbuild]
 
   :profiles {:dev {;:resource-paths ["dummy-data"]
                    :dependencies [[reagent "0.6.0"]]}}
@@ -25,6 +28,7 @@
   :cljsbuild {:builds
               [{:id "dev"
                 :figwheel true
+                :jar true
                 :source-paths ["src/cljs" "test/cljs"]
                 :compiler {:main "think.peer.net-client-test"
                            :asset-path "js/out"

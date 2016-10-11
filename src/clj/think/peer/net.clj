@@ -9,7 +9,7 @@
   (:import [org.fressian.handlers WriteHandler ReadHandler]
            [org.fressian.impl ByteBufferInputStream BytesOutputStream]))
 
-(defmethod cf/formatter* :fressian [_]
+#_(defmethod cf/formatter* :fressian [_]
   (reify cf/ChordFormatter
     (freeze [_ obj]
       ;(println "writing fressian data:" (keys obj))
