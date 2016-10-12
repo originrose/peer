@@ -19,35 +19,15 @@
   :hooks [leiningen.cljsbuild]
 
   :profiles {:dev {;:resource-paths ["dummy-data"]
-                   :dependencies [[reagent "0.6.0"]]}}
+                   :dependencies [[reagent "0.6.0"]]}
+             :prod {}}
 
   :source-paths ["src/clj" "src/cljs"]
   :test-paths ["test/clj"]
 
+  :clean-targets ^{:protect false} ["resources/public/"]
+
   :figwheel {:builds-to-start ["dev" "test"]}
-
-  :cljsbuild {:builds
-              [{:id "dev"
-                :figwheel true
-                :jar true
-                :source-paths ["src/cljs" "test/cljs"]
-                :compiler {:main "think.peer.net-client-test"
-                           :asset-path "js/out"
-                           :output-to "resources/public/js/think.peer.js"
-                           :output-dir "resources/public/js/out"
-                           :optimizations :none
-                           :pretty-print  true}}
-
-               {:id "test"
-                :figwheel true
-                :source-paths ["src/cljs" "test/cljs"]
-                :compiler {:main "think.peer.net-client-test"
-                           :output-to "resources/public/js/test/think.peer.tests.js"
-                           :output-dir "resources/public/js/test/out"
-                           :optimizations :none
-                           :pretty-print  true}}
-               ]}
-
 
 
   :repositories  {"snapshots"  {:url "s3p://thinktopic.jars/snapshots/"
