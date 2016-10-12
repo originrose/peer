@@ -21,7 +21,7 @@
   :profiles {:dev {;:resource-paths ["dummy-data"]
                    :dependencies [[reagent "0.6.0"]]}}
 
-  :source-paths ["src/clj"]
+  :source-paths ["src/clj" "src/cljs"]
   :test-paths ["test/clj"]
 
   :figwheel {:builds-to-start ["dev" "test"]}
