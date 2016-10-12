@@ -13,7 +13,8 @@
                  [thinktopic/aljabr "0.1.1"]]
 
   :plugins [[lein-cljsbuild "1.1.4"]
-            [lein-figwheel "0.5.8"]]
+            [lein-figwheel "0.5.8"]
+            [s3-wagon-private "1.2.0"]]
 
   :hooks [leiningen.cljsbuild]
 
@@ -46,4 +47,16 @@
                            :optimizations :none
                            :pretty-print  true}}
                ]}
+
+
+
+  :repositories  {"snapshots"  {:url "s3p://thinktopic.jars/snapshots/"
+                                :passphrase :env
+                                :username :env
+                                :releases false}
+                  "releases"  {:url "s3p://thinktopic.jars/releases/"
+                               :passphrase :env
+                               :username :env
+                               :snapshots false
+                               :sign-releases false}}
 )
