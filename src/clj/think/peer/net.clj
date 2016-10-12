@@ -5,7 +5,8 @@
             [clojure.core.matrix :as mat]
             [thinktopic.matrix.fressian :as mfress]
             [clojure.data.fressian :as fressian]
-            [clojure.repl :as repl])
+            [clojure.repl :as repl]
+            [clojure.stacktrace])
   (:import [org.fressian.handlers WriteHandler ReadHandler]
            [org.fressian.impl ByteBufferInputStream BytesOutputStream]))
 
@@ -105,4 +106,3 @@
             (swap! clients* assoc client-id ws-ch)
             (>! ws-ch {:type :connect-reply :success true})
             (client-listener client-id ws-ch)))))))
-
