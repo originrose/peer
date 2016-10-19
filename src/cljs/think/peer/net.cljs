@@ -15,7 +15,7 @@
 
 (def DEFAULT-HOST "localhost")
 (def DEFAULT-PORT 4242)
-(def RPC-TIMEOUT 3000)
+(def RPC-TIMEOUT 30000)
 (def DISPATCH-BUFFER-SIZE 64) ; # of incoming msgs to buffer
 
 (def log println)
