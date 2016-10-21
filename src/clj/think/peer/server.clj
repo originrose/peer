@@ -1,19 +1,15 @@
 (ns think.peer.server
   (:require [clojure.core.async :refer [go <! >!] :as async]
-            [clojure.core.matrix :as mat]
             [org.httpkit.server :as http-kit]
             [compojure.core :refer [routes GET PUT POST]]
             [compojure.route :refer [not-found resources]]
             [ring.middleware.defaults :refer [site-defaults wrap-defaults]]
             [hiccup.core :refer [html]]
             [hiccup.page :refer [include-js include-css]]
-            [think.peer.net :as net]
-            [think.peer.nrepl :as nrepl]))
+            [think.peer.net :as net]))
 
 (def DEFAULT-PORT 4242)
 (defonce server* (atom nil))
-
-(mat/set-current-implementation :vectorz)
 
 (defn page
   [body]
@@ -44,11 +40,8 @@
     [:body
      [:div#app
       [:h3 "Clojurescript has not been compiled..."]]
-     (include-js "js/externs/canvasjs.min.js")
-     ;(include-js "js/test/out/goog/base.js")
-     (include-js "js/test/think.peer.tests.js")
-     ;[:script "goog.require('think.peer.core');"]
-     ]))
+     ;(include-js "js/externs/canvasjs.min.js")
+     (include-js "js/test/think.peer.tests.js")]))
 
 (defn make-app
   []
@@ -56,7 +49,6 @@
                  (GET "/" [] (home-page))
                  (GET "/test" [] (test-page))
                  (GET "/connect" req (net/connect-client req))
-                 ;(GET "/nrepl" req (nrepl/connect req))
                  (resources "/")
                  (not-found "Not Found"))]
     (wrap-defaults routes site-defaults)))

@@ -1,13 +1,7 @@
 (ns think.peer.net
   (:require
     [chord.client :refer [ws-ch]]
-    [fressian-cljs.core :as fressian]
-    [fressian-cljs.reader :as freader]
-    [chord.format :as cf]
-    [chord.format.fressian]
-    [thinktopic.matrix.fressian :as mf]
-    [cljs.core.async :refer [<! >! put!] :as async]
-    [clojure.core.matrix :as mat])
+    [cljs.core.async :refer [<! >! put!] :as async])
   (:require-macros
     [cljs.core.async.macros :refer [go go-loop]]))
 
@@ -25,18 +19,11 @@
 (defonce server-chan* (atom nil))
 (defonce event-chan* (atom nil))
 
-(defmethod cf/formatter* :fressian [_]
-  (reify cf/ChordFormatter
-    (freeze [writer obj]
-      (fressian/write obj))
-
-    (thaw [_ s]
-      (fressian/read s :handlers (merge fressian/cljs-read-handler mf/READ-HANDLERS)))))
 
 (defn setup-websocket
   [url]
   (go
-    (let [conn (<! (ws-ch url {:format :fressian}))
+    (let [conn (<! (ws-ch url {:format :transit-json}))
           {:keys [ws-channel error]} conn
           _ (>! ws-channel {:type :connect :client-id CLIENT-ID})
           {:keys [message error]} (<! ws-channel)]
@@ -79,7 +66,7 @@
 (defn send-event
   [event & [args]]
   (let [e {:event event :args (or args {})}]
-    (println "sending event: " e)
+    (log "sending event: " e)
     (put! @server-chan* e)))
 
 (defn subscribe-server-event
@@ -99,7 +86,7 @@
   (let [rpc-events (subscribe-server-event :rpc-response)]
     (go-loop []
       (let [{:keys [id] :as event} (<! rpc-events)]
-        (log event)
+        (log "rpc response: " event)
         (when-let [res-chan (get @rpc-map* id)]
           (>! res-chan event)
           (swap! rpc-map* dissoc id)))
@@ -113,7 +100,7 @@
         res-chan (async/chan)
         t-out (async/timeout RPC-TIMEOUT)
         event {:event :rpc :id req-id :method method :args (or args {})}]
-    (println "event: " event)
+    (log "request:" event)
     (swap! rpc-map* assoc req-id res-chan)
     (go
       (>! @server-chan* event)

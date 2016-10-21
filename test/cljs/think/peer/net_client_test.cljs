@@ -10,16 +10,21 @@
 
 (def SERVER-URL "ws://localhost:4242/connect")
 
-(defn page
+(defn test-page
   []
   (let [data* (reagent/atom false)]
     (go
       (let [v (<! (net/request :foo))]
+        (println "got data: " v)
         (reset! data* v)))
     (fn []
-      (if @data*
-        [:div @data*]
-        [:div "no data yet..."]))))
+      [:div
+       [:h3 "Test page"]
+       (if-let [data @data*]
+         [:div
+          [:h4 "Received data:"]
+          [:div (str data)]]
+         [:div "no data yet..."])])))
 
 (defn ^:export -main
   []
@@ -27,8 +32,7 @@
     (println "connecting to server")
     (<! (net/connect-to-server SERVER-URL))
     (println "rendering test component")
-    (let [elem (.getElementById js/document "app")]
-      (reagent/render [page] elem))
-    (println "ready")))
+    (reagent/render [test-page] (.getElementById js/document "app"))
+    (println "mounted")))
 
 (-main)

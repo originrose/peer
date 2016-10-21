@@ -4,19 +4,17 @@
                  [http-kit "2.1.18"]
                  [ring/ring-defaults "0.2.1"]
                  [compojure "1.5.1"]
-                 [net.mikera/vectorz-clj "0.45.0"]
-                 [thinktopic/matrix.fressian "0.3.0-SNAPSHOT"]
-
                  [jarohen/chord "0.7.0" :exclusions [org.clojure/tools.reader]]
                  [org.clojure/clojurescript "1.9.229"]
-                 [org.clojure/core.async "0.2.391"]
-                 [thinktopic/aljabr "0.1.1"]]
+                 [org.clojure/core.async "0.2.391"]]
 
   :plugins [[lein-figwheel "0.5.8"]
             [s3-wagon-private "1.2.0"]]
 
   :profiles {:dev {;:resource-paths ["dummy-data"]
                    :dependencies [[reagent "0.6.0"]]}}
+
+  :main think.peer.net-server-test
 
   :source-paths ["src/clj" "src/cljs"]
   :test-paths ["test/clj"]
@@ -38,13 +36,12 @@
                 :figwheel true
                 :source-paths ["src/cljs" "test/cljs"]
                 :compiler {:main "think.peer.net-client-test"
+                           :asset-path "js/test/out"
                            :output-to "resources/public/js/test/think.peer.tests.js"
                            :output-dir "resources/public/js/test/out"
                            :optimizations :none
                            :pretty-print  true}}
                ]}
-
-
 
   :repositories  {"snapshots"  {:url "s3p://thinktopic.jars/snapshots/"
                                 :passphrase :env
