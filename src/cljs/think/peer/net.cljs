@@ -36,7 +36,7 @@
 (defn setup-websocket
   [url]
   (go
-    (let [conn (<! (ws-ch url {:format :fressian}))
+    (let [conn (<! (ws-ch url {:format :transit-json}))
           {:keys [ws-channel error]} conn
           _ (>! ws-channel {:type :connect :client-id CLIENT-ID})
           {:keys [message error]} (<! ws-channel)]
@@ -112,8 +112,8 @@
   (let [req-id (random-uuid)
         res-chan (async/chan)
         t-out (async/timeout RPC-TIMEOUT)
-        event {:event :rpc :id req-id :method method :args (or args {})}]
-    (println "event: " event)
+        event {:event :rpc :id req-id :method method :args (or args [])}]
+    (println "request event: " event)
     (swap! rpc-map* assoc req-id res-chan)
     (go
       (>! @server-chan* event)
