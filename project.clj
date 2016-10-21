@@ -1,4 +1,4 @@
-(defproject thinktopic/think.peer "0.1.0-SNAPSHOT"
+(defproject thinktopic/think.peer "0.1.0"
   :description "P2P - Clojure(Script) style"
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [http-kit "2.1.18"]
