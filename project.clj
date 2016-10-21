@@ -1,18 +1,18 @@
-(defproject thinktopic/think.peer "0.1.0"
+(defproject thinktopic/think.peer "0.2.0-SNAPSHOT"
   :description "P2P - Clojure(Script) style"
   :dependencies [[org.clojure/clojure "1.8.0"]
+                 [com.taoensso/timbre "4.7.4"]
                  [http-kit "2.1.18"]
                  [ring/ring-defaults "0.2.1"]
                  [compojure "1.5.1"]
                  [jarohen/chord "0.7.0" :exclusions [org.clojure/tools.reader]]
-                 [org.clojure/clojurescript "1.9.229"]
-                 [org.clojure/core.async "0.2.391"]]
+                 [org.clojure/clojurescript "1.9.293"]
+                 [org.clojure/core.async "0.2.395"]]
 
   :plugins [[lein-figwheel "0.5.8"]
             [s3-wagon-private "1.2.0"]]
 
-  :profiles {:dev {;:resource-paths ["dummy-data"]
-                   :dependencies [[reagent "0.6.0"]]}}
+  :profiles {:dev {:dependencies [[reagent "0.6.0"]]}}
 
   :main think.peer.net-server-test
 
