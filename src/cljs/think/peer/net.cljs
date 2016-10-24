@@ -16,9 +16,9 @@
 
 (defonce CLIENT-ID (random-uuid))
 (defonce rpc-map* (atom {}))
+(defonce subscription-map* (atom {}))
 (defonce server-chan* (atom nil))
 (defonce event-chan* (atom nil))
-
 
 (defn setup-websocket
   [url]
@@ -64,8 +64,8 @@
   (reset! server-chan* nil))
 
 (defn send-event
-  [event & [args]]
-  (let [e {:event event :args (or args {})}]
+  [event & args]
+  (let [e {:event event :args args :id (random-uuid)}]
     (log "sending event: " e)
     (put! @server-chan* e)))
 
@@ -95,11 +95,11 @@
 (defn request
   "Make an RPC request to the server.  Returns a channel that will receive the result, or nil on error.
   (The error will be logged to the console.)"
-  [method & [args]]
+  [fun & [args]]
   (let [req-id (random-uuid)
         res-chan (async/chan)
         t-out (async/timeout RPC-TIMEOUT)
-        event {:event :rpc :id req-id :method method :args (or args [])}]
+        event {:event :rpc :id req-id :fn fun :args (or args [])}]
     (log "request:" event)
     (swap! rpc-map* assoc req-id res-chan)
     (go
@@ -108,9 +108,8 @@
         (cond
           (= port t-out) (do ; Timeout
                            (swap! rpc-map* dissoc req-id)
-                           (log (str "RPC Timeout: " method))
                            (throw
-                             (js/Error. (str "RPC Timeout: " method))))
+                             (js/Error. (str "RPC Timeout: " fun))))
 
           (and (= port res-chan) ; Got response
                (:result v))      (:result v)
@@ -129,21 +128,23 @@
 
 (defn subscribe-to
   "Returns a channel that will receive the data for a given publication."
-  [output]
-  (let [flow-events (subscribe-server-event :flow (async/sliding-buffer 1))
-        out-key (keyword output)]
-    (send-event :subscribe {:output output})
-    (async/map
-      (fn [event]
-        (get (:data event) out-key))
+  [subscription & args]
+  (let [flow-events (subscribe-server-event :publication (async/sliding-buffer 1))
+        id (random-uuid)
+        publication-chan (async/chan 1 (filter #(= id (:id %))))
+        value-chan (async/chan 1 (map :value))
+        event {:event :subscription :id id
+               :fn subscription :args (or args [])}]
+    (log "subscription: " event)
+    (swap! subscription-map* assoc value-chan id)
+    (put! @server-chan* event)
+    (async/pipe flow-events publication-chan)
+    (async/pipe publication-chan value-chan)
+    value-chan))
 
-      [(async/filter<
-        (fn [{:keys [data] :as event}]
-          (and data (contains? data out-key)))
-        flow-events)])))
-
-;(defn unsubscribe-to-element-output
-;  "Unsubscribe from an elements output port."
-;  [output ch]
-;  (send-event :unsubscribe {:output output})
-;  (unsubscribe-server-event "flow" ch))
+(defn unsubscribe-from
+  [ch]
+  (let [id (get subscription-map* ch)
+        event {:event :unsubscription :id id}]
+    (swap! subscription-map* dissoc id)
+    (put! @server-chan* event)))
