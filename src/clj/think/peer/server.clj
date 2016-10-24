@@ -28,11 +28,7 @@
      [:h1 "Home page"]
      [:div#app
       [:h3 "Clojurescript has not been compiled..."]]
-     (include-js "js/externs/canvasjs.min.js")
-     (include-js "js/think.peer.js")
-     ;(include-js "js/out/goog/base.js")
-     ;[:script "goog.require('think.peer.core');"]
-     ]))
+     (include-js "js/think.peer.js")]))
 
 (defn test-page
   []
@@ -40,7 +36,6 @@
     [:body
      [:div#app
       [:h3 "Clojurescript has not been compiled..."]]
-     ;(include-js "js/externs/canvasjs.min.js")
      (include-js "js/test/think.peer.tests.js")]))
 
 (defn make-app
