@@ -24,9 +24,13 @@
         n (count msg-args)
         arglists (:arglists (meta handler))
         arg-counts (map count arglists)
-        ok? (some #(= n %) arg-counts)]
-    (if ok?
-      (apply handler msg-args)
+        ok? (some #(= n %) arg-counts)
+        _ (println "arglists: " arglists)
+        optional? (first (filter #(= '& (first %)) arglists))]
+    (cond
+      ok?  (apply handler msg-args)
+      optional? (handler)
+      :default
       (throw (ex-info (str "Incorrect number of arguments passed to function: "
                   n " for function " handler " with arglists " arglists)
                       {})))))
