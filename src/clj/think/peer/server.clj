@@ -1,9 +1,9 @@
 (ns think.peer.server
   (:require [clojure.core.async :refer [go <! >!] :as async]
             [org.httpkit.server :as http-kit]
-            [compojure.core :refer [routes GET PUT POST]]
-            [compojure.route :refer [not-found resources]]
             [ring.middleware.defaults :refer [site-defaults wrap-defaults]]
+            [bidi.bidi :refer [match-route]]
+            [bidi.ring :refer [make-handler resources-maybe]]
             [hiccup.core :refer [html]]
             [hiccup.page :refer [include-js include-css]]
             [think.peer.net :as net]))
@@ -38,15 +38,18 @@
       [:h3 "Clojurescript has not been compiled..."]]
      (include-js "js/test/think.peer.tests.js")]))
 
+
+  ["" {"/" {["" (br/resources-maybe {:prefix "public"})] :home-page-handler}}])
+
 (defn make-app
   []
-  (let [routes (routes
-                 (GET "/" [] (home-page))
-                 (GET "/test" [] (test-page))
-                 (GET "/connect" req (net/connect-client req))
-                 (resources "/")
-                 (not-found "Not Found"))]
-    (wrap-defaults routes site-defaults)))
+  (let [routes ["" [["test" test-page]
+                    ["connect" net/connect-client]
+                    ["/" {["" (resources-maybe {:prefix "public"})] home-page} ]
+                    [true "Not Found"]]]
+        router (make-handler routes)]
+    ;(wrap-defaults router site-defaults)
+    #(match-route routes %)))
 
 (def app (make-app))
 

@@ -4,7 +4,7 @@
                  [com.taoensso/timbre "4.7.4"]
                  [http-kit "2.1.18"]
                  [ring/ring-defaults "0.2.1"]
-                 [compojure "1.5.1"]
+                 [bidi "2.0.13"]
                  [jarohen/chord "0.7.0" :exclusions [org.clojure/tools.reader]]
                  [org.clojure/clojurescript "1.9.293"]
                  [org.clojure/core.async "0.2.395"]]
