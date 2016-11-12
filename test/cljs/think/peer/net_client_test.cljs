@@ -67,7 +67,7 @@
          [:div
           [:h4 "Received data:"]
           [:div (str data)]]
-         [:div "no data yet..."])])))
+         [:div "no data yet..."])]])))
 
 (defn ^:export -main
   []
