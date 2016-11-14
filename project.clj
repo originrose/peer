@@ -1,6 +1,6 @@
 (defproject thinktopic/think.peer "0.2.0-SNAPSHOT"
   :description "P2P - Clojure(Script) style"
-  :dependencies [[org.clojure/clojure "1.8.0"]
+  :dependencies [[org.clojure/clojure "1.9.0-alpha13"]
                  [com.taoensso/timbre "4.7.4"]
                  [http-kit "2.1.18"]
                  [ring/ring-defaults "0.2.1"]
@@ -52,4 +52,4 @@
                                :username :env
                                :snapshots false
                                :sign-releases false}}
-)
+  )

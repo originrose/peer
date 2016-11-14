@@ -33,13 +33,11 @@
 (defn test-page
   []
   (page
-    [:body
-     [:div#app
-      [:h3 "Clojurescript has not been compiled..."]]
-     (include-js "js/test/think.peer.tests.js")]))
+   [:body
+    [:div#app
+     [:h3 "Clojurescript has not been compiled..."]]
+    (include-js "js/test/think.peer.tests.js")]))
 
-
-  ["" {"/" {["" (br/resources-maybe {:prefix "public"})] :home-page-handler}}])
 
 (defn make-app
   []
@@ -48,7 +46,6 @@
                     ["/" {["" (resources-maybe {:prefix "public"})] home-page} ]
                     [true "Not Found"]]]
         router (make-handler routes)]
-    ;(wrap-defaults router site-defaults)
     #(match-route routes %)))
 
 (def app (make-app))
@@ -64,4 +61,3 @@
   []
   (@server*)
   (reset! server* nil))
-

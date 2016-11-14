@@ -1,10 +1,8 @@
 (ns think.peer.test-api
-  (:require
-    [clojure.spec :as s]
-    [clojure.core.async :refer [go go-loop <! >! chan alts! timeout sliding-buffer]]
-    [taoensso.timbre :as log]
-    [config.core :refer [env]]
-    [think.peer.net :as net]))
+  (:require [clojure.spec :as s]
+            [clojure.core.async :refer [go go-loop <! >! chan alts! timeout sliding-buffer]]
+            [taoensso.timbre :as log]
+            [think.peer.net :as net]))
 
 (defn times-two
   [v]
