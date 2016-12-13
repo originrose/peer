@@ -1,7 +1,6 @@
 (ns think.peer.webrtc
-  (:require
-    [cljs.core.async :refer [chan >! <! put! timeout close!]
-                     :refer-macros [go alt!]]))
+  (:require-macros [cljs.core.async.macros :refer [go alt!]])
+  (:require [cljs.core.async :refer [chan >! <! put! timeout close!]]))
 
 (defn select-element
   [id]
@@ -168,4 +167,3 @@
   )
 
 ;(setup)
-

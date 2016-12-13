@@ -120,17 +120,14 @@
 
   {:event {'ping #'my.ns/ping}
    :rpc {...}
-   :subscription {...}
-  }
-  "
+   :subscription {...}}"
   [handlers req & [options]]
   (with-channel req ws-ch {:format :transit-json}
-      (go
-        (let [{:keys [message error]} (<! ws-ch)]
-          (if error
-            (log/warn "Client connect error:" error)
-            (let [client-id (:client-id message)]
-              (swap! clients* assoc client-id {:chan ws-ch :subscriptions {}})
-              (>! ws-ch {:type :connect-reply :success true})
-              (client-listener handlers client-id ws-ch)))))))
-
+    (go
+      (let [{:keys [message error]} (<! ws-ch)]
+        (if error
+          (log/warn "Client connect error:" error)
+          (let [client-id (:client-id message)]
+            (swap! clients* assoc client-id {:chan ws-ch :subscriptions {}})
+            (>! ws-ch {:type :connect-reply :success true})
+            (client-listener handlers client-id ws-ch)))))))

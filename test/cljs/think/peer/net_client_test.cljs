@@ -5,16 +5,16 @@
             [reagent.core :as reagent]
             [cljs.core.async :refer [put! chan <! >! timeout close!]]
             [think.peer.net :as net]
-            [think.ui.components.canvas :refer [canvas-graph]]))
+            #_[think.ui.components.canvas :refer [canvas-graph]]))
 
 (enable-console-print!)
 
 (def SERVER-URL "ws://localhost:4242/connect")
 
-(def a* (atom nil))
-(def b* (atom nil))
-(def c* (atom nil))
-(def vals* (atom nil))
+(def a* (reagent/atom nil))
+(def b* (reagent/atom nil))
+(def c* (reagent/atom nil))
+(def vals* (reagent/atom nil))
 
 (defn example-requests
   []
@@ -43,31 +43,31 @@
 (defn test-page
   []
   (let [data* (reagent/atom false)
-        graph-opts* (atom
-                      {:title {:test "Streaming Chart"}
-                       :zoomEnabled false
-                       :animationEnabled true
-                       :showLegend false
-                       :panEnabled false
-                       :axisX {:title "Time"
-                               :minimum 0}
-                       :data [{:type "spline"
-                               :dataPoints []}]})]
+        graph-opts* (reagent/atom
+                     {:title {:test "Streaming Chart"}
+                      :zoomEnabled false
+                      :animationEnabled true
+                      :showLegend false
+                      :panEnabled false
+                      :axisX {:title "Time"
+                              :minimum 0}
+                      :data [{:type "spline"
+                              :dataPoints []}]})]
     (example-requests)
     (update-chart graph-opts*)
     (fn []
       [:div
        [:h3 "Test page"]
-        [:div.examples
+       [:div.examples
         [:div "hello: " @a*]
         [:div "10 * 20 = " @b*]
         [:div "count: " @c*]
-        [:div [canvas-graph graph-opts*]]
-       (if-let [data @data*]
-         [:div
-          [:h4 "Received data:"]
-          [:div (str data)]]
-         [:div "no data yet..."])]])))
+        #_[:div [canvas-graph graph-opts*]]
+        (if-let [data @data*]
+          [:div
+           [:h4 "Received data:"]
+           [:div (str data)]]
+          [:div "no data yet..."])]])))
 
 (defn ^:export -main
   []
@@ -75,7 +75,6 @@
     (<! (net/connect-to-server SERVER-URL))
     (net/send-event 'hello-event)
     (listen-to-counter)
-    (mount-root)
     (reagent/render [test-page] (.getElementById js/document "app"))))
 
 (-main)

@@ -17,7 +17,10 @@
   :main think.peer.net-server-test
 
   :source-paths ["src/clj" "src/cljs"]
+
   :test-paths ["test/clj"]
+
+  :clean-targets ^{:protect false} ["resources/public/js/test/"]
 
   :figwheel {:builds-to-start ["dev" "test"]}
 
@@ -31,7 +34,6 @@
                            :output-dir "resources/public/js/out"
                            :optimizations :none
                            :pretty-print  true}}
-
                {:id "test"
                 :figwheel true
                 :source-paths ["src/cljs" "test/cljs"]
@@ -40,8 +42,7 @@
                            :output-to "resources/public/js/test/think.peer.tests.js"
                            :output-dir "resources/public/js/test/out"
                            :optimizations :none
-                           :pretty-print  true}}
-               ]}
+                           :pretty-print  true}}]}
 
   :repositories  {"snapshots"  {:url "s3p://thinktopic.jars/snapshots/"
                                 :passphrase :env
