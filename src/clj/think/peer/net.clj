@@ -58,15 +58,9 @@
     (if-let [handler (get-in handlers [:subscription (:fn req)])]
       (let [pub-chan (apply handler (:args req))]
         (if (satisfies? clojure.core.async.impl.protocols/ReadPort pub-chan)
-          (do
-            (let [event-chan (async/chan 1 (map (fn [v] {:event :publication :id id :value v})))]
-              (async/pipe pub-chan event-chan)
-              (async/pipe event-chan chan)
-              ;(go-loop []
-              ;  (when-let [v (<! event-chan)]
-              ;    (log/info "publication [" client-id id "]: " v)
-              ;    (recur)))
-              )
+          (let [event-chan (async/chan 1 (map (fn [v] {:event :publication :id id :value v})))]
+            (async/pipe pub-chan event-chan)
+            (async/pipe event-chan chan)
             (swap! clients* assoc-in [client-id :subscriptions id] pub-chan))
           (throw (ex-info (str "Subscription function didn't return a publication channel:" req)
                           {}))))
