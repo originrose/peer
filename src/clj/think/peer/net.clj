@@ -122,8 +122,6 @@
    :rpc {...}
    :subscription {...}}"
   [handlers req & [options]]
-  (println "handlers:")
-  (clojure.pprint/pprint handlers)
   (with-channel req ws-ch {:format :transit-json}
     (go
       (let [{:keys [message error]} (<! ws-ch)]

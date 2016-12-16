@@ -13,6 +13,9 @@
 
   :source-paths ["src/clj" "src/cljs"]
 
+  :profiles {:test {:dependencies [[stylefruits/gniazdo "1.0.0"]
+                                   [com.cognitect/transit-clj "0.8.297"]]}}
+
   :clean-targets ^{:protect false} ["resources/public/js/test/"]
 
   :repositories  {"snapshots"  {:url "s3p://thinktopic.jars/snapshots/"

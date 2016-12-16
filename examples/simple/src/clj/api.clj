@@ -56,4 +56,4 @@
       (<! (timeout period-ms))
       (when (>! publication-chan (+ min-val (* (rand) (- max-val min-val))))
         (recur)))
-    publication-chan)) 
+    publication-chan))
