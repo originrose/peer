@@ -9,20 +9,11 @@
                  [org.clojure/clojurescript "1.9.293"]
                  [org.clojure/core.async "0.2.395"]]
 
-  :plugins [[lein-figwheel "0.5.8"]
-            [s3-wagon-private "1.2.0"]]
-
-  :profiles {:dev {:dependencies [[reagent "0.6.0"]]}}
-
-  :main think.peer.net-server-test
+  :plugins [[s3-wagon-private "1.2.0"]]
 
   :source-paths ["src/clj" "src/cljs"]
 
-  :test-paths ["test/clj"]
-
   :clean-targets ^{:protect false} ["resources/public/js/test/"]
-
-  :figwheel {:builds-to-start ["dev" "test"]}
 
   :repositories  {"snapshots"  {:url "s3p://thinktopic.jars/snapshots/"
                                 :passphrase :env

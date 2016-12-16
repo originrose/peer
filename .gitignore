@@ -1,4 +1,5 @@
 target/
+examples/simple/resources/public/
 .nrepl-port
 figwheel_server.log
 pom.xml

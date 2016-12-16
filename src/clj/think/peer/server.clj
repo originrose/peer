@@ -5,7 +5,6 @@
             [bidi.ring :refer [make-handler]]
             [hiccup.core :refer [html]]
             [hiccup.page :refer [include-js include-css]]
-            [think.peer.test-api]
             [think.peer.api :as api]
             [think.peer.net :as net]))
 
@@ -42,24 +41,18 @@
      [:h3 "Clojurescript has not been compiled..."]]
     (include-js "js/test/think.peer.tests.js")]))
 
-(defn make-app
-  []
-  (make-handler ["/" {"" home-page
-                      "test" test-page
-                      "connect" (partial net/connect-client (api/ns-api 'think.peer.test-api))}]))
-
-(def app
-  (-> (make-app)
-      (wrap-resource "public")))
-
 (defn start
-  [& [port]]
-  (let [port (or port DEFAULT-PORT)]
-    (println "=============================")
-    (println "Starting server on port:" port)
-    (if @server*
-      @server*
-      (reset! server* (http-kit/run-server #'app {:port port})))))
+  [source-ns-api & [port]]
+  (if @server*
+    @server*
+    (let [port (or port DEFAULT-PORT)
+          app (-> (make-handler ["/" {"" home-page
+                                      "test" test-page
+                                      "connect" (partial net/connect-client source-ns-api)}])
+                  (wrap-resource "public"))]
+      (println "=============================")
+      (println "Starting server on port:" port)
+      (reset! server* (http-kit/run-server app {:port port})))))
 
 (defn stop
   []

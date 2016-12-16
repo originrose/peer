@@ -3,11 +3,16 @@
   :url "http://example.com/FIXME"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.8.0"]
-                 [thinktopic/think.peer "0.2.0-SNAPSHOT"]]
-  :main ^:skip-aot simple.core
+  :dependencies [[org.clojure/clojure "1.9.0-alpha14"]
+                 [org.clojure/clojurescript "1.9.293"]
+                 [thinktopic/think.peer "0.2.0-SNAPSHOT"]
+                 [reagent "0.6.0"]]
+  :main ^:skip-aot server
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}}
+
+  :plugins [[lein-figwheel "0.5.8"]]
+  :figwheel {:builds-to-start ["dev"]}
 
   :source-paths ["src/clj"]
 

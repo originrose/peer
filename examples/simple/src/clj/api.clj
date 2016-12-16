@@ -1,4 +1,4 @@
-(ns think.peer.test-api
+(ns api
   (:require [clojure.spec :as s]
             [clojure.core.async :refer [go go-loop <! >! chan alts! timeout sliding-buffer]]
             [taoensso.timbre :as log]))
@@ -56,4 +56,4 @@
       (<! (timeout period-ms))
       (when (>! publication-chan (+ min-val (* (rand) (- max-val min-val))))
         (recur)))
-    publication-chan))
+    publication-chan)) 
