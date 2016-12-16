@@ -1,4 +1,4 @@
-(ns think.peer.net-client-test
+(ns client
   (:require-macros [cljs.core.async.macros :refer [go go-loop]])
   (:require [goog.dom :as dom]
             [goog.events :as events]

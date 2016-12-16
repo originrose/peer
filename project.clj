@@ -24,26 +24,6 @@
 
   :figwheel {:builds-to-start ["dev" "test"]}
 
-  :cljsbuild {:builds
-              [{:id "dev"
-                :figwheel true
-                :source-paths ["src/cljs" "test/cljs"]
-                :compiler {:main "think.peer.net-client-test"
-                           :asset-path "js/out"
-                           :output-to "resources/public/js/think.peer.js"
-                           :output-dir "resources/public/js/out"
-                           :optimizations :none
-                           :pretty-print  true}}
-               {:id "test"
-                :figwheel true
-                :source-paths ["src/cljs" "test/cljs"]
-                :compiler {:main "think.peer.net-client-test"
-                           :asset-path "js/test/out"
-                           :output-to "resources/public/js/test/think.peer.tests.js"
-                           :output-dir "resources/public/js/test/out"
-                           :optimizations :none
-                           :pretty-print  true}}]}
-
   :repositories  {"snapshots"  {:url "s3p://thinktopic.jars/snapshots/"
                                 :passphrase :env
                                 :username :env
@@ -52,5 +32,4 @@
                                :passphrase :env
                                :username :env
                                :snapshots false
-                               :sign-releases false}}
-  )
+                               :sign-releases false}})
