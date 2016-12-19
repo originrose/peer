@@ -1,4 +1,4 @@
-(defproject thinktopic/think.peer "0.2.0-SNAPSHOT"
+(defproject thinktopic/think.peer "0.2.0"
   :description "P2P - Clojure(Script) style"
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [com.taoensso/timbre "4.7.4"]
