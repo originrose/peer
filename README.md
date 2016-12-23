@@ -51,10 +51,13 @@ placed.
 
 ## Development
 
-You can verify basic connectivity with the test server and page:
-  $ lein run test
-  $ lein figwheel test
+You can verify basic connectivity with the (simple) example:
 
-Now visit http://localhost:4242/test and you should see data that
+```
+$ cd example/simple
+$ lein run
+$ lein figwheel
+```
+
+Now visit http://localhost:4242/ and you should see data that
 has arrived from the server using a websocket RPC call.
-

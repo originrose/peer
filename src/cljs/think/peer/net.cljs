@@ -86,7 +86,7 @@
   (let [rpc-events (subscribe-server-event :rpc-response)]
     (go-loop []
       (let [{:keys [id] :as event} (<! rpc-events)]
-        (log "rpc response: " event)
+        ;; (log "rpc response: " event)
         (when-let [res-chan (get @rpc-map* id)]
           (>! res-chan event)
           (swap! rpc-map* dissoc id)))
