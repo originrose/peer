@@ -9,26 +9,26 @@ requests or as a websocket interface.
 
 Add the library to your dependencies like so:
 
-[thinktopic/think.peer "0.2.0-SNAPSHOT"]
+    [thinktopic/think.peer "0.2.0-SNAPSHOT"]
 
 In Clojure you point to a namespace to expose its functions as
 event/rpc/subscription handlers.
 
-(ns example.app.handler
-  (:require [think.peer.net :as net]
-            [think.peer.api :as peer-api]))
+    (ns example.app.handler
+      (:require [think.peer.net :as net]
+                [think.peer.api :as peer-api]))
 
-...
+    ...
 
-(defroutes routes
-  (GET "/" [] (loading-page))
-  (GET "/api/v0/docs" [] (docs-page))
-  (GET "/api/v0/*" req
-    (html5 (peer-api/api-handler (peer-api/ns-api 'example.app.api) req)))
-  (GET "/connect" req
-    (net/connect-client (peer-api/ns-api 'example.app.api) req))
-  (resources "/")
-  (not-found "Not Found"))
+    (defroutes routes
+      (GET "/" [] (loading-page))
+      (GET "/api/v0/docs" [] (docs-page))
+      (GET "/api/v0/*" req
+        (html5 (peer-api/api-handler (peer-api/ns-api 'example.app.api) req)))
+      (GET "/connect" req
+        (net/connect-client (peer-api/ns-api 'example.app.api) req))
+      (resources "/")
+      (not-found "Not Found"))
 
 
 Then in Clojurescript you can connect to the websocket using the
@@ -36,28 +36,26 @@ connect-to-server function, and you can make an RPC call using the request
 function.  It returns a channel onto which the result of the request will be
 placed.
 
-(ns example.app.core
-  (:require [think.peer.net :as net]
-            [cljs.core.async :as async :refer [<! >! put!]])
-  (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
+    (ns example.app.core
+      (:require [think.peer.net :as net]
+                [cljs.core.async :as async :refer [<! >! put!]])
+      (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
-(def dbs* (atom nil))
+    (def dbs* (atom nil))
 
-(net/send-event 'hello-event)
-(let [cnt-chan (net/subscribe-to 'second-counter)]
-  (go
-    (<! (net/connect-to-server "ws://localhost:1212/connect"))
-    (reset! dbs* (<! (net/request 'dbs-get)))))
+    (net/send-event 'hello-event)
+    (let [cnt-chan (net/subscribe-to 'second-counter)]
+      (go
+        (<! (net/connect-to-server "ws://localhost:1212/connect"))
+        (reset! dbs* (<! (net/request 'dbs-get)))))
 
 ## Development
 
 You can verify basic connectivity with the (simple) example:
 
-```
-$ cd example/simple
-$ lein run
-$ lein figwheel
-```
+    $ cd example/simple
+    $ lein run
+    $ lein figwheel
 
 Now visit http://localhost:4242/ and you should see data that
 has arrived from the server using a websocket RPC call.
