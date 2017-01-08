@@ -58,15 +58,9 @@
     (if-let [handler (get-in handlers [:subscription (:fn req)])]
       (let [pub-chan (apply handler (:args req))]
         (if (satisfies? clojure.core.async.impl.protocols/ReadPort pub-chan)
-          (do
-            (let [event-chan (async/chan 1 (map (fn [v] {:event :publication :id id :value v})))]
-              (async/pipe pub-chan event-chan)
-              (async/pipe event-chan chan)
-              ;(go-loop []
-              ;  (when-let [v (<! event-chan)]
-              ;    (log/info "publication [" client-id id "]: " v)
-              ;    (recur)))
-              )
+          (let [event-chan (async/chan 1 (map (fn [v] {:event :publication :id id :value v})))]
+            (async/pipe pub-chan event-chan)
+            (async/pipe event-chan chan)
             (swap! clients* assoc-in [client-id :subscriptions id] pub-chan))
           (throw (ex-info (str "Subscription function didn't return a publication channel:" req)
                           {}))))
@@ -120,17 +114,14 @@
 
   {:event {'ping #'my.ns/ping}
    :rpc {...}
-   :subscription {...}
-  }
-  "
+   :subscription {...}}"
   [handlers req & [options]]
   (with-channel req ws-ch {:format :transit-json}
-      (go
-        (let [{:keys [message error]} (<! ws-ch)]
-          (if error
-            (log/warn "Client connect error:" error)
-            (let [client-id (:client-id message)]
-              (swap! clients* assoc client-id {:chan ws-ch :subscriptions {}})
-              (>! ws-ch {:type :connect-reply :success true})
-              (client-listener handlers client-id ws-ch)))))))
-
+    (go
+      (let [{:keys [message error]} (<! ws-ch)]
+        (if error
+          (log/warn "Client connect error:" error)
+          (let [client-id (:client-id message)]
+            (swap! clients* assoc client-id {:chan ws-ch :subscriptions {}})
+            (>! ws-ch {:type :connect-reply :success true})
+            (client-listener handlers client-id ws-ch)))))))
