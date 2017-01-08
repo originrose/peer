@@ -7,18 +7,29 @@
 
 (enable-console-print!)
 
+(def logging?* (atom false))
+
 (def DEFAULT-HOST "localhost")
 (def DEFAULT-PORT 4242)
 (def RPC-TIMEOUT 3000)
 (def DISPATCH-BUFFER-SIZE 64) ; # of incoming msgs to buffer
 
-(def log println)
+(defn log
+  [& args]
+  (when @logging?*
+    (apply println args)))
 
 (defonce CLIENT-ID (random-uuid))
 (defonce rpc-map* (atom {}))
 (defonce subscription-map* (atom {}))
 (defonce server-chan* (atom nil))
 (defonce event-chan* (atom nil))
+
+(defn enable-logging!
+  ([]
+   (enable-logging! true))
+  ([b]
+   (reset! loggin?* b)))
 
 (defn setup-websocket
   [url]
@@ -66,7 +77,7 @@
 (defn send-event
   [event & args]
   (let [e {:event event :args args :id (random-uuid)}]
-    (log "sending event: " e)
+    ;; (log "sending event: " e)
     (put! @server-chan* e)))
 
 (defn subscribe-server-event
@@ -93,14 +104,14 @@
       (recur))))
 
 (defn request
-  "Make an RPC request to the server.  Returns a channel that will receive the result, or nil on error.
+  "Make an RPC request to the server. Returns a channel that will receive the result, or nil on error.
   (The error will be logged to the console.)"
   [fun & [args]]
   (let [req-id (random-uuid)
         res-chan (async/chan)
         t-out (async/timeout RPC-TIMEOUT)
         event {:event :rpc :id req-id :fn fun :args (or args [])}]
-    (log "request:" event)
+    ;;(log "request:" event)
     (swap! rpc-map* assoc req-id res-chan)
     (go
       (>! @server-chan* event)
