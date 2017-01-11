@@ -29,7 +29,7 @@
   ([]
    (enable-logging! true))
   ([b]
-   (reset! loggin?* b)))
+   (reset! logging?* b)))
 
 (defn setup-websocket
   [url]
