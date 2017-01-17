@@ -12,6 +12,8 @@
 
 (enable-console-print!)
 
+(def logging?* (atom false))
+
 (def DEFAULT-HOST "localhost")
 (def DEFAULT-PORT 4242)
 (def DEFAULT-PATH "connect")
@@ -89,7 +91,7 @@
       (recur))))
 
 (defn request
-  "Make an RPC request to the server.  Returns a channel that will receive the result, or nil on error.
+  "Make an RPC request to the server. Returns a channel that will receive the result, or nil on error.
   (The error will be logged to the console.)"
   [{:keys [rpc-map* peer-chan] :as conn} fun & [args]]
   (let [req-id (random-uuid)
