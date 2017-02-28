@@ -26,14 +26,37 @@
     (println "got source: " src)
     src))
 
+(defn- with-partial-args
+  "Takes a function f and variadic args. Creates a new partial function closing
+  over those args aswell as adding a partial-args value into the functions meta data.
+  Also transfers the input functions meta-data to the new partial version with the addition
+  over partial-args."
+  [f & args]
+  (let [meta-data (meta f)]
+    (with-meta
+      (apply partial f args)
+      (assoc meta-data :partial-args args))))
+
+(defn wrap-args
+  "Takes a map of functions and a coll of args to close over for each function."
+  [fns args]
+  (reduce
+   (fn [fns [k f]]
+     (assoc fns k (apply with-partial-args f args)))
+   {}
+   fns))
+
 (defn ns-api
   "Return an API spec given a namespace."
-  [ns-sym]
+  [ns-sym & {:keys [partial-args]}]
   (let [fns (ns-fns ns-sym)
         {:keys [event rpc subscription]} (group-by #(or (:api/type (meta %)) :rpc) fns)
-        fns->map #(into {} (map (fn [f] [(:name (meta f)) f]) %))]
-    {:rpc (fns->map rpc)
-     :event (fns->map event)
+        fns->map #(into {} (map (fn [f] [(:name (meta f)) f]) %))
+        fns-map  (fns->map rpc)]
+    {:rpc          (if partial-args
+                     (wrap-args fns-map partial-args)
+                     fns-map)
+     :event        (fns->map event)
      :subscription (fns->map subscription)}))
 
 (defn html-function-doc
@@ -83,4 +106,3 @@
         (try (handler (:params req))
              (catch Exception e
                [:div "Exception: " (str e)]))))))
-
