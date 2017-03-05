@@ -41,10 +41,10 @@
   "Takes a map of functions and a coll of args to close over for each function."
   [fns args]
   (reduce
-   (fn [fns [k f]]
-     (assoc fns k (apply with-partial-args f args)))
-   {}
-   fns))
+    (fn [fns [k f]]
+      (assoc fns k (with-partial-args f args)))
+    {}
+    fns))
 
 (defn ns-api
   "Return an API spec given a namespace."
@@ -54,7 +54,7 @@
         fns->map #(into {} (map (fn [f] [(:name (meta f)) f]) %))
         fns-map  (fns->map rpc)]
     {:rpc          (if partial-args
-                     (wrap-args fns-map partial-args)
+                     (apply wrap-args fns-map partial-args)
                      fns-map)
      :event        (fns->map event)
      :subscription (fns->map subscription)}))
