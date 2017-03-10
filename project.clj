@@ -9,7 +9,7 @@
                  [org.clojure/clojurescript "1.9.293"]
                  [org.clojure/core.async "0.2.395"]]
 
-  :plugins [[s3-wagon-private "1.2.0"]]
+  :plugins [[s3-wagon-private "1.3.0"]]
 
   :source-paths ["src/clj" "src/cljs"]
 
