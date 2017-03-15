@@ -18,12 +18,20 @@
 
   :clean-targets ^{:protect false} ["resources/public/js/test/"]
 
+  :release-tasks [["vcs" "assert-committed"]
+                  ["change" "version" "leiningen.release/bump-version" "release"]
+                  ["vcs" "commit"]
+                  ["vcs" "tag" "" "--no-sign"] ; disable signing
+                  ["deploy"]
+                  ["change" "version" "leiningen.release/bump-version"]
+                  ["vcs" "commit"]
+                  ["vcs" "push"]]
+
   :repositories  {"snapshots"  {:url "s3p://thinktopic.jars/snapshots/"
-                                :passphrase :env
-                                :username :env
-                                :releases false}
+                                :no-auth true
+                                :releases false
+                                :sign-releases false}
                   "releases"  {:url "s3p://thinktopic.jars/releases/"
-                               :passphrase :env
-                               :username :env
+                               :no-auth true
                                :snapshots false
                                :sign-releases false}})
