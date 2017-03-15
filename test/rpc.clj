@@ -4,7 +4,6 @@
             [gniazdo.core :as ws]
             [think.peer.net :as net]
             [think.peer.api :as api]
-            [think.peer.server :as server]
             [test-api]
             [util :refer [edn->transit transit->edn with-peer-server]]))
 

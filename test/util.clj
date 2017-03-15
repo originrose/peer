@@ -1,16 +1,17 @@
 (ns util
   (:require [clojure.test :refer :all]
             [cognitect.transit :as transit]
-            [think.peer.server :as server]
             [think.peer.api :as api]
+            [think.peer.net :as net]
             [test-api])
   (:import [java.io ByteArrayInputStream ByteArrayOutputStream]))
 
 (defn with-peer-server
   [test-fn]
-  (server/start (api/ns-api 'test-api) 4242)
-  (test-fn)
-  (server/stop))
+  (let [server (net/listen :listener (net/peer-listener (api/ns-api 'test-api))
+                           :port 4242)]
+    (test-fn)
+    (net/close server)))
 
 (defn edn->transit
   [edn]
@@ -25,3 +26,4 @@
       (ByteArrayInputStream.)
       (transit/reader :json)
       (transit/read)))
+

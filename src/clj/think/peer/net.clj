@@ -187,7 +187,7 @@
           (<! (async/timeout 2000))
 
   (peer-listener
-      :api {:event {'ping #'my.ns/ping}
+      {:event {'ping #'my.ns/ping}
             :rpc {'add-two #(+ %1 %2)}
             :subscription {'rand-val (fn [] {:chan (rand-eventer)})})
   "
@@ -201,7 +201,7 @@
 ; receive websocket requests you can connect an API to each new socket using
 ; the peer-listener and connect-listener function.
 ;
-;  (listen listener request)
+;  (connect-listener listener request)
 ;
 ; Or you can use serve-api to serve the API on a port (listening for websocket
 ; requests), optionally also serving files and a cljs app.
