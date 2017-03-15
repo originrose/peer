@@ -26,20 +26,19 @@
 
 (defn run-handler
   [handler req]
-  (log/debug "request: " req)
   (let [msg-args (:args req)
-        n (count msg-args)
-        arglists (:arglists (meta handler))
+        {:keys [arglists partial-args]} (meta handler)
+        n (+ (count msg-args) (count partial-args))
         arg-counts (map count arglists)
         ok? (some #(= n %) arg-counts)
         optional? (first (filter #(= '& (first %)) arglists))]
     (cond
-      ok?  (apply handler msg-args)
+      ok? (apply handler msg-args)
       optional? (handler)
-      :default
-      (throw (ex-info (str "Incorrect number of arguments passed to function: "
-                  n " for function " handler " with arglists " arglists)
-                      {})))))
+      ;; TODO: This is not surfacing from a System using think.peer...
+      :default (throw (ex-info (str "Incorrect number of arguments passed to function: "
+                                    n " for function " handler " with arglists " arglists)
+                               {})))))
 
 (defn event-handler
   [api req]

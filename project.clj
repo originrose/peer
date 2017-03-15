@@ -1,4 +1,4 @@
-(defproject thinktopic/think.peer "0.2.1-SNAPSHOT"
+(defproject thinktopic/think.peer "0.2.2-SNAPSHOT"
   :description "P2P - Clojure(Script) style"
   :dependencies [[org.clojure/clojure "1.9.0-alpha13"]
                  [com.taoensso/timbre "4.7.4"]
@@ -9,7 +9,7 @@
                  [org.clojure/clojurescript "1.9.293"]
                  [org.clojure/core.async "0.2.395"]]
 
-  :plugins [[s3-wagon-private "1.2.0"]]
+  :plugins [[s3-wagon-private "1.3.0"]]
 
   :source-paths ["src/clj" "src/cljs"]
 
@@ -18,12 +18,20 @@
 
   :clean-targets ^{:protect false} ["resources/public/js/test/"]
 
+  :release-tasks [["vcs" "assert-committed"]
+                  ["change" "version" "leiningen.release/bump-version" "release"]
+                  ["vcs" "commit"]
+                  ["vcs" "tag" "" "--no-sign"] ; disable signing
+                  ["deploy"]
+                  ["change" "version" "leiningen.release/bump-version"]
+                  ["vcs" "commit"]
+                  ["vcs" "push"]]
+
   :repositories  {"snapshots"  {:url "s3p://thinktopic.jars/snapshots/"
-                                :passphrase :env
-                                :username :env
-                                :releases false}
+                                :no-auth true
+                                :releases false
+                                :sign-releases false}
                   "releases"  {:url "s3p://thinktopic.jars/releases/"
-                               :passphrase :env
-                               :username :env
+                               :no-auth true
                                :snapshots false
                                :sign-releases false}})
