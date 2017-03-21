@@ -24,7 +24,7 @@
 (defn- websocket-chan
   [url peer-id]
   (go
-    (let [conn (<! (ws-ch url {:format :edn}))
+    (let [conn (<! (ws-ch url {:format :transit-json}))
           {:keys [ws-channel error]} conn
           _ (>! ws-channel {:type :connect :client-id peer-id})
           {:keys [message error]} (<! ws-channel)]
