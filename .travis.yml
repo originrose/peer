@@ -10,6 +10,7 @@ before_install:
 - wget https://releases.hashicorp.com/vault/0.6.1/vault_0.6.1_linux_amd64.zip -O vault.zip
 - unzip vault.zip
 - export PATH=$PATH:$PWD
+- vault auth -method=github token=$GITHUB_TOKEN
 - ". scripts/s3-deploy-access"
 after_success:
 - lein deploy
