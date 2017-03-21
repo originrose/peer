@@ -102,24 +102,24 @@
   [{:keys [api* peers*] :as listener} peer-id]
   (let [peer-chan (get-in @peers* [peer-id :chan])]
     (go-loop []
-             (let [{:keys [message error] :as packet} (<! peer-chan)]
-               (if (or (nil? packet) error)
-                 (do
-                   (log/info "peer disconnect")
-                   (disconnect-peer peers* peer-id))
-                 (do
-                   (when message
-                     (log/info message)
-                     (let [message (assoc message
-                                          :peer-id peer-id
-                                          :chan peer-chan)
-                           event-type (:event message)]
-                       (cond
-                         (= event-type :rpc) (rpc-event-handler @api* message)
-                         (= event-type :subscription) (subscription-event-handler peers* peer-id @api* message)
-                         (= event-type :unsubscription) (unsubscription-event-handler peers* peer-id message)
-                         :default (event-handler @api* message)))
-                     (recur))))))))
+      (let [{:keys [message error] :as packet} (<! peer-chan)]
+        (if (or (nil? packet) error)
+          (do
+            (log/info "peer disconnect")
+            (disconnect-peer peers* peer-id))
+          (do
+            (when message
+              (log/info message)
+              (let [message (assoc message
+                                   :peer-id peer-id
+                                   :chan peer-chan)
+                    event-type (:event message)]
+                (cond
+                  (= event-type :rpc) (rpc-event-handler @api* message)
+                  (= event-type :subscription) (subscription-event-handler peers* peer-id @api* message)
+                  (= event-type :unsubscription) (unsubscription-event-handler peers* peer-id message)
+                  :default (event-handler @api* message)))
+              (recur))))))))
 
 (defn connect-listener
   "Connect an API listener to a websocket.  Takes an http-kit request
@@ -128,7 +128,7 @@
   (connect-listener listener request)
   "
   [{:keys [peers* api*] :as listener} req]
-  (with-channel req ws-ch {:format :edn}
+  (with-channel req ws-ch {:format :transit-json}
     (go
       (let [{:keys [message error]} (<! ws-ch)]
         (if error
@@ -233,3 +233,4 @@
   (when-let [server (:server s)]
     (server)
     (dissoc s :server)))
+
