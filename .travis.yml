@@ -12,5 +12,3 @@ before_install:
 - export PATH=$PATH:$PWD
 - vault auth -method=github token=$GITHUB_TOKEN
 - ". scripts/s3-deploy-access"
-after_success:
-- lein deploy
