@@ -86,7 +86,8 @@
   [peers* peer-id]
   (let [peer (get @peers* peer-id)]
     (swap! peers* dissoc peer-id)
-    (async/close! (:chan peer))
+    (if-let [peer-chan (:chan peer)]
+      (async/close! peer-chan))
     (doseq [[sub-id {:keys [chan stop]}] (:subscriptions peer)]
       (when (fn? stop)
         (stop))
