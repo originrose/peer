@@ -1,0 +1,15 @@
+#!/bin/bash
+export VAULT_ADDR='https://thinktopic.com:8200'
+
+echo "Requesting AWS creds..."
+creds=`vault read aws/sts/core-sts`
+access_key=$(echo "$creds" | awk '/access_key/ { print $2 }')
+secret_key=$(echo "$creds" | awk '/secret_key/ { print $2 }')
+security_token=$(echo "$creds" | awk '/security_token/ { print $2 }')
+export AWS_ACCESS_KEY_ID=$access_key
+export AWS_SECRET_ACCESS_KEY=$secret_key
+export AWS_SESSION_TOKEN=$security_token
+
+echo "export AWS_ACCESS_KEY_ID=$access_key"
+echo "export AWS_SECRET_ACCESS_KEY=$secret_key"
+echo "export AWS_SESSION_TOKEN=$security_token"

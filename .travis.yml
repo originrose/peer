@@ -11,4 +11,4 @@ before_install:
 - unzip vault.zip
 - export PATH=$PATH:$PWD
 - vault auth -method=github token=$GITHUB_TOKEN
-- ". scripts/s3-deploy-access"
+- ". scripts/core-access"
