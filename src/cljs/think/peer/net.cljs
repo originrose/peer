@@ -84,8 +84,11 @@
   [event-chan rpc-map*]
   (let [rpc-events (event-type-chan event-chan :rpc-response)]
     (go-loop []
-      (let [{:keys [id] :as event} (<! rpc-events)]
-        (when-let [res-chan (get @rpc-map* id)]
+      (let [{id :id :as event} (<! rpc-events)]
+        ;; FIXME: this is a hack, convert to strings as transit UUIDs aren't the same as core UUIDs
+        (when-let [res-chan (get (into {} (map (fn [[k v]][(str k) v]) @rpc-map*)) (str id))
+                  ; (get @rpc-map* id)
+                   ]
           (>! res-chan event)
           (swap! rpc-map* dissoc id)))
       (recur))))
