@@ -93,10 +93,10 @@
 (defn request
   "Make an RPC request to the server. Returns a channel that will receive the result, or nil on error.
   (The error will be logged to the console.)"
-  [{:keys [rpc-map* peer-chan] :as conn} fun & [args]]
+  [{:keys [rpc-map* peer-chan timeout] :as conn} fun & [args]]
   (let [req-id (random-uuid)
         res-chan (async/chan)
-        t-out (async/timeout RPC-TIMEOUT)
+        t-out (async/timeout (or timeout RPC-TIMEOUT))
         event {:event :rpc :id req-id :fn fun :args (or args [])}]
     (swap! rpc-map* assoc req-id res-chan)
     (go
