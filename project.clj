@@ -22,16 +22,16 @@
                                        ["deploy"]
                                        ["change" "version" "leiningen.release/bump-version"]
                                        ["vcs" "commit"]
-                                       ["vcs" "push"]]
-                       :repositories  {"snapshots"  {:url "s3p://thinktopic.jars/snapshots/"
-                                                     :no-auth true
-                                                     :releases false
-                                                     :sign-releases false}
-                                       "releases"  {:url "s3p://thinktopic.jars/releases/"
-                                                    :no-auth true
-                                                    :snapshots false
-                                                    :sign-releases false}}}}
+                                       ["vcs" "push"]]}}
 
   :clean-targets ^{:protect false} ["resources/public/js/test/"]
 
+  :repositories  {"snapshots"  {:url "s3p://thinktopic.jars/snapshots/"
+                                :no-auth true
+                                :releases false
+                                :sign-releases false}
+                  "releases"  {:url "s3p://thinktopic.jars/releases/"
+                               :no-auth true
+                               :snapshots false
+                               :sign-releases false}}
   :aliases {"release" ["with-profile" "release" "release"]})
