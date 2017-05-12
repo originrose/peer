@@ -19,7 +19,7 @@
                                        ["change" "version" "leiningen.release/bump-version" "release"]
                                        ["vcs" "commit"]
                                        ["vcs" "tag" "" "--no-sign"] ; disable signing
-                                       ["deploy"]
+                                       ["with-profile" "release" "deploy"]
                                        ["change" "version" "leiningen.release/bump-version"]
                                        ["vcs" "commit"]
                                        ["vcs" "push"]]}}
