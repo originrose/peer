@@ -12,18 +12,19 @@
 
   :source-paths ["src/clj" "src/cljs"]
 
+  :plugins [[s3-wagon-private "1.3.0"]]
+
   :profiles {:test {:dependencies [[stylefruits/gniazdo "1.0.0"]
-                                   [com.cognitect/transit-clj "0.8.300"]]}
-             :deploy {:plugins [[s3-wagon-private "1.3.0"]]}
-             :release {:plugins [[s3-wagon-private "1.3.0"]]
-                       :release-tasks [["vcs" "assert-committed"]
-                                       ["change" "version" "leiningen.release/bump-version" "release"]
-                                       ["vcs" "commit"]
-                                       ["vcs" "tag" "" "--no-sign"] ; disable signing
-                                       ["deploy"]
-                                       ["change" "version" "leiningen.release/bump-version"]
-                                       ["vcs" "commit"]
-                                       ["vcs" "push"]]}}
+                                   [com.cognitect/transit-clj "0.8.300"]]}}
+
+  :release-tasks [["vcs" "assert-committed"]
+                  ["change" "version" "leiningen.release/bump-version" "release"]
+                  ["vcs" "commit"]
+                  ["vcs" "tag" "" "--no-sign"] ; disable signing
+                  ["deploy"]
+                  ["change" "version" "leiningen.release/bump-version"]
+                  ["vcs" "commit"]
+                  ["vcs" "push"]]
 
   :clean-targets ^{:protect false} ["resources/public/js/test/"]
 
@@ -34,5 +35,4 @@
                   "releases"  {:url "s3p://thinktopic.jars/releases/"
                                :no-auth true
                                :snapshots false
-                               :sign-releases false}}
-  :aliases {"release" ["with-profile" "release" "release"]})
+                               :sign-releases false}})
