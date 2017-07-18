@@ -1,6 +1,6 @@
 # think.peer
 
-This is a networking library for Clojure and Clojurescript providing events, RPC
+This is a networking library for Clojure and ClojureScript providing events, RPC
 calls, and subscriptions to remote channels.  From Clojure you can point to a
 namespace of functions to expose them as both a web API using typical HTTP
 requests or as a websocket interface.
@@ -9,7 +9,7 @@ requests or as a websocket interface.
 
 Add the library to your dependencies like so:
 
-    [thinktopic/think.peer "0.2.0-SNAPSHOT"]
+    [thinktopic/think.peer "0.2.6"]
 
 In Clojure you point to a namespace to expose its functions as
 event/rpc/subscription handlers.
@@ -31,7 +31,7 @@ event/rpc/subscription handlers.
       (not-found "Not Found"))
 
 
-Then in Clojurescript you can connect to the websocket using the
+Then in ClojureScript you can connect to the websocket using the
 connect-to-server function, and you can make an RPC call using the request
 function.  It returns a channel onto which the result of the request will be
 placed.
