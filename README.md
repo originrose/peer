@@ -9,7 +9,7 @@ requests or as a websocket interface.
 
 Add the library to your dependencies like so:
 
-    [thinktopic/think.peer "0.2.6"]
+    [thinktopic/think.peer "0.2.7"]
 
 In Clojure you point to a namespace to expose its functions as
 event/rpc/subscription handlers.
