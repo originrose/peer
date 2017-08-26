@@ -8,7 +8,8 @@
 
 (defn with-peer-server
   [test-fn]
-  (let [server (net/listen :listener (net/peer-listener (api/ns-api 'test-api))
+  (let [server (net/listen :listener (net/peer-listener
+                                       {:api (api/ns-api 'test-api)})
                            :port 4242)]
     (test-fn)
     (net/close server)))

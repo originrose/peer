@@ -17,15 +17,15 @@
 (def DISPATCH-BUFFER-SIZE 64) ; # of incoming msgs to buffer
 
 (defn- websocket-chan
-  [url peer-id error-fn]
+  [url peer-id on-error]
   (go
     (let [conn (<! (ws-ch url {:format :transit-json}))
           {:keys [ws-channel error]} conn
           _ (>! ws-channel {:type :connect :client-id peer-id})
           {:keys [message error]} (<! ws-channel)]
       (if error
-        (if error-fn
-          (error-fn {:error :connect
+        (if on-error
+          (on-error {:error :connect
                      :host url}))
         (do
           (log/info "Connected to host: " url)
@@ -91,7 +91,7 @@
 (defn request
   "Make an RPC request to the server. Returns a channel that will receive the result, or nil on error.
   (The error will be logged to the console.)"
-  [{:keys [rpc-map* peer-chan timeout error-fn] :as conn} fun & [args]]
+  [{:keys [rpc-map* peer-chan timeout on-error] :as conn} fun & [args]]
   (let [req-id (random-uuid)
         res-chan (async/chan)
         t-out (async/timeout (or timeout RPC-TIMEOUT))
@@ -104,8 +104,8 @@
           ; The request timed out
           (= port t-out) (do
                            (swap! rpc-map* dissoc req-id)
-                           (if error-fn
-                             (error-fn (assoc event :error :timeout))))
+                           (if on-error
+                             (on-error (assoc event :error :timeout))))
 
           ; Got response
           (and (= port res-chan)
@@ -113,30 +113,30 @@
 
           ; Got error
           (and (= port res-chan)
-               (:error v)) (if error-fn
-                             (error-fn (merge event v))))))))
+               (:error v)) (if on-error
+                             (on-error (merge event v))))))))
 
 ; TODO: connect up the API so it works the same on the client as the server,
 ; allowing the server to call functions and make subscriptions on the client.
 (defn connect
   "Returns a peer connection that can be used to send events, make rpc requests, and
   subscribe to peer event channels."
-  [& {:keys [url api host port path error-fn]
+  [& {:keys [url api host port path on-error]
       :or {host DEFAULT-HOST
            port DEFAULT-PORT
            path DEFAULT-PATH
-           error-fn #(log/error "Error: " %)}
+           on-error #(log/error "Error: " %)}
       :as args}]
   (go
     (let [url (or url (format "ws://%s:%s/%s" host port path))
           id (random-uuid)
-          peer-chan (<! (websocket-chan url id error-fn))
+          peer-chan (<! (websocket-chan url id on-error))
           ec (pub-chan peer-chan)
           rpc-map* (atom {})]
       (handle-rpc-events ec rpc-map*)
       {:peer-chan peer-chan
        :event-chan ec
-       :error-fn error-fn
+       :on-error on-error
        :rpc-map* rpc-map*
        :subscription-map* (atom {})
        :api* (atom api)})))

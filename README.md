@@ -20,13 +20,15 @@ event/rpc/subscription handlers.
 
     ...
 
+    (def listener (net/peer-listener {:api (peer-api/ns-api 'example.app.api)})
+
     (defroutes routes
       (GET "/" [] (loading-page))
       (GET "/api/v0/docs" [] (docs-page))
       (GET "/api/v0/*" req
         (html5 (peer-api/api-handler (peer-api/ns-api 'example.app.api) req)))
       (GET "/connect" req
-        (net/connect-client (peer-api/ns-api 'example.app.api) req))
+        (net/connect-listener listener req))
       (resources "/")
       (not-found "Not Found"))
 

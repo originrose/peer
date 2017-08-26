@@ -51,15 +51,21 @@
     (log/info "Unhandled event: " req)))
 
 (defn rpc-event-handler
-  [api {:keys [chan id] :as req} ctx]
+  [api on-error {:keys [chan id] :as req} ctx]
   (go
+    (try
     (if-let [handler (get-in api [:rpc (:fn req)])]
       (let [v (run-handler ctx handler req)
             res (if (satisfies? clojure.core.async.impl.protocols/ReadPort v)
                   (<! v)
                   v)]
         (>! chan {:event :rpc-response :id id :result res}))
-      (log/error "Unhandled rpc-request: " req))))
+      (throw (ex-info "Unhandled rpc-request: " req)))
+    (catch Exception e
+      (if (fn? on-error)
+        (on-error e)
+        (log/error e))
+      (>! chan {:event :rpc-response :id id :result {:error (str e)}})))))
 
 (defn subscription-event-handler
   [peers* peer-id api {:keys [chan id] :as req} ctx]
@@ -106,25 +112,31 @@
 
 (defn- api-router
   "Setup a router go-loop to handle received messages from a peer."
-  [{:keys [api* peers* ctx] :as listener} peer-id]
-  (let [peer-chan (get-in @peers* [peer-id :chan])]
+  [{:keys [api* peers* on-error on-disconnect middleware ctx] :as listener} peer-id]
+  (let [peer (get @peers* peer-id)
+        peer-chan (:chan peer)]
     (go-loop []
       (let [{:keys [message error] :as packet} (<! peer-chan)]
         (if (or (nil? packet) error)
           (do
-            (log/info "peer disconnect")
+            (when on-disconnect
+              (on-disconnect peer))
             (disconnect-peer peers* peer-id))
           (do
             (when message
-              (let [message (assoc message
-                                   :peer-id peer-id
-                                   :chan peer-chan)
-                    event-type (:event message)]
-                (cond
-                  (= event-type :rpc) (rpc-event-handler @api* message ctx)
-                  (= event-type :subscription) (subscription-event-handler peers* peer-id @api* message ctx)
-                  (= event-type :unsubscription) (unsubscription-event-handler peers* peer-id message ctx)
-                  :default (event-handler @api* message ctx)))
+              (try
+                (let [message (assoc message
+                                     :peer-id peer-id
+                                     :chan peer-chan)
+                      event-type (:event message)]
+                  (cond
+                    (= event-type :rpc) (rpc-event-handler @api* on-error message ctx)
+                    (= event-type :subscription) (subscription-event-handler peers* peer-id @api* message ctx)
+                    (= event-type :unsubscription) (unsubscription-event-handler peers* peer-id message ctx)
+                    :default (event-handler @api* message ctx)))
+                (catch Exception e
+                  (when on-error
+                    (on-error e))))
               (recur))))))))
 
 (defn connect-listener
@@ -133,16 +145,27 @@
 
   (connect-listener listener request)
   "
-  [{:keys [peers* api*] :as listener} req]
-  (with-channel req ws-ch {:format :transit-json}
+  [{:keys [peers* api* on-error on-connect packet-format] :as listener} req]
+  (with-channel req ws-ch {:format packet-format}
     (go
+      (try
       (let [{:keys [message error]} (<! ws-ch)]
         (if error
-          (log/warn "Peer connect error:" error)
-          (let [peer-id (:peer-id message)]
-            (swap! peers* assoc peer-id {:chan ws-ch :subscriptions {}})
+          (do
+            (log/error error)
+            (when on-error
+              (on-error error)))
+          (let [peer-id (:peer-id message)
+                peer {:peer-id peer-id :chan ws-ch :subscriptions {} :request req}]
+            (swap! peers* assoc peer-id peer)
             (api-router listener peer-id)
-            (>! ws-ch {:type :connect-reply :success true})))))))
+            (>! ws-ch {:type :connect-reply :success true})
+            (when on-connect
+              (on-connect peer)))))
+      (catch Exception e
+        (when on-error
+          (on-error e))
+        (throw e))))))
 
 
 (defn- page-template
@@ -174,8 +197,12 @@
 
 (defn peer-listener
   "A peer listener holds the state need to serve an API to a set of one or more peers.
-  Requires an API config map.
+  Requires a config map.
   * :api is an API map as described below
+  * :on-connect a peer connect event handler (fn [peer-map] ...)
+  * :on-disconnect a peer disconnect event handler (fn [peer-map] ...)
+  * :on-error an error handler (fn [error] ...)
+  * packet-format: websocket packet format (default: :transit-json)
 
   The API map contains three maps of handler functions:
   * :event handlers are triggered when a peer fires an event
@@ -183,6 +210,7 @@
   * :subscription subscription handlers should return a map with two keys
     - :chan a channel that will be piped to the remote peer
     - :stop an optional function to call on unsubscribe
+  )
 
   (defn rand-eventer
     []
@@ -193,24 +221,24 @@
           (<! (async/timeout 2000))
 
   (peer-listener
+    {:api
       {:event {'ping #'my.ns/ping}
-            :rpc {'add-two #(+ %1 %2)}
-            :subscription {'rand-val (fn [] {:chan (rand-eventer)})})
+       :rpc   {'add-two #(+ %1 %2)}
+       :subscription {'rand-val (fn [] {:chan (rand-eventer)})}}
+     :middleware
+       {:enter [request-logger]
+        :leave []}
+     :on-error #(log/error %)})
   "
-  [api]
+  [{:keys [api middleware on-error on-connect on-disconnect packet-format]}]
   {:peers* (atom {})
-   :api* (if (atom? api) api (atom api))})
+   :api* (if (atom? api) api (atom api))
+   :middleware* (if (atom? middleware) middleware (atom middleware))
+   :on-error on-error
+   :on-connect on-connect
+   :on-disconnect on-disconnect
+   :packet-format (or packet-format :transit-json)})
 
-
-;; Note:
-; If you have your own HTTP router (e.g. compojure or bidi) already setup to
-; receive websocket requests you can connect an API to each new socket using
-; the peer-listener and connect-listener function.
-;
-;  (connect-listener listener request)
-;
-; Or you can use listen to serve an API on a port (listening for websocket
-; requests), optionally also serving files and a cljs app.
 
 (defn listen
   "Serve an API over a websocket, and optionally other resources.
@@ -230,28 +258,29 @@
   (listen :api api-map :port 4242)
   (listen :api-ns 'my-app.remote.api :js [\"js/client.js\"] :css [\"css/client.css\"])
   "
-  [& {:keys [api-ns api ctx listener port ws-path app-path js css] :as args}]
-  (log/debug (format "(listen %s)" args))
-  (let [port (or port DEFAULT-PEER-PORT)
-        ws-path (or ws-path "connect")
+  [& {:keys [api-ns api ctx listener packet-format
+             port ws-path app-path js css] :as args}]
+  (let [port     (or port DEFAULT-PEER-PORT)
+        ws-path  (or ws-path "connect")
         app-path (or app-path "")
         listener (cond
-                   api      (peer-listener api)
-                   api-ns   (peer-listener (api/ns-api api-ns))
+                   (map? listener)  listener
+                   (map? api)       (peer-listener api)
+                   (symbol? api-ns) (peer-listener (api/ns-api api-ns))
                    :error   (throw
                               (Exception.
-                                "Listen requires an api ns or an api map.")))
+                                "Must supply an ns symbol, api map, or peer listener.")))
         listener (if ctx
                    (assoc listener :ctx ctx)
                    listener)
-        routes {ws-path (partial connect-listener listener)}
-        routes (if (or js css)
-                 (assoc routes app-path (partial app-page js css) )
-                 routes)
-        app (-> (make-handler ["/" routes])
-                (wrap-resource "public")
-                (wrap-file "resources/public" {:allow-symlinks? true}))]
-    (log/info "routes: " routes)
+
+        routes   {ws-path (partial connect-listener listener)}
+        routes   (if (or js css)
+                   (assoc routes app-path (partial app-page js css) )
+                   routes)
+        app      (-> (make-handler ["/" routes])
+                     (wrap-resource "public")
+                     (wrap-file "resources/public" {:allow-symlinks? true}))]
     (assoc listener
            :port port
            :server (http-kit/run-server app {:port port}))))

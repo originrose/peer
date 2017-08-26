@@ -7,6 +7,12 @@
   [in]
   in)
 
+(defn ^{:api/type :rpc}
+  bad-function
+  "Trigger an error to test error handling."
+  []
+  (throw (Exception. "Test error")))
+
 (defn ^{:api/type :subscription}
   counter
   "A simple function that writes to a channel continuously"
