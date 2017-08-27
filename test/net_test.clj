@@ -5,7 +5,7 @@
             [think.peer.net :as net]
             [think.peer.api :as api]
             [test-api]
-            [util :refer [edn->transit transit->edn with-peer-server]]))
+            [util :refer [edn->transit transit->edn]]))
 
 (defn send-msg
   [socket msg]
