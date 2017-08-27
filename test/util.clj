@@ -6,14 +6,6 @@
             [test-api])
   (:import [java.io ByteArrayInputStream ByteArrayOutputStream]))
 
-(defn with-peer-server
-  [test-fn]
-  (let [server (net/listen :listener (net/peer-listener
-                                       {:api (api/ns-api 'test-api)})
-                           :port 4242)]
-    (test-fn)
-    (net/close server)))
-
 (defn edn->transit
   [edn]
   (let [out (ByteArrayOutputStream. 4096)

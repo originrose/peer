@@ -17,46 +17,43 @@
 (def DISPATCH-BUFFER-SIZE 64) ; # of incoming msgs to buffer
 
 (defn- websocket-chan
-  [url peer-id on-error]
+  [url peer-id on-error on-connect]
   (go
     (let [conn (<! (ws-ch url {:format :transit-json}))
           {:keys [ws-channel error]} conn
           _ (>! ws-channel {:type :connect :client-id peer-id})
           {:keys [message error]} (<! ws-channel)]
       (if error
-        (if on-error
+        (when on-error
           (on-error {:error :connect
                      :host url}))
         (do
-          (log/info "Connected to host: " url)
+          (when on-connect
+            (on-connect message))
           ws-channel)))))
 
 (defn- dispatch-events
-  [server-chan dispatch-chan]
+  [server-chan dispatch-chan on-event on-error]
   "Dispatch messages from server socket onto the event chan, where
   they can easily be subscribed to by :event type. "
   (go-loop []
     (let [packet (<! server-chan)
           {:keys [message error]} packet]
       (if error
-        (log/error "Websocket Error on server channel: " error)
+        (when on-error
+          (on-error error))
         (do
+          (when on-event
+            (on-event message))
           (>! dispatch-chan message)
           (recur))))))
 
-(defn- pub-chan
-  "Takes a readable chan, returns a core.async/pub chan that can be
-  subscribed to in order to receive server events of a specific type."
-  [server-chan]
-  (let [dispatch-chan (async/chan DISPATCH-BUFFER-SIZE)
-        event-chan    (async/pub dispatch-chan :event)]
-    (dispatch-events server-chan dispatch-chan)
-    event-chan))
-
 (defn disconnect!
-  [{:keys [peer-chan] :as conn}]
+  [{:keys [peer-chan on-disconnect] :as conn}]
   (put! peer-chan {:event :disconnect})
-  (async/close! peer-chan))
+  (async/close! peer-chan)
+  (when on-disconnect
+    (on-disconnect conn)))
 
 (defn event
   [{:keys [peer-chan] :as conn} event & args]
@@ -75,7 +72,7 @@
   [event-chan event-type ch]
   (async/unsub event-chan event-type ch))
 
-(defn- handle-rpc-events
+(defn- handle-rpc-responses
   [event-chan rpc-map*]
   (let [rpc-events (event-type-chan event-chan :rpc-response)]
     (go-loop []
@@ -121,22 +118,26 @@
 (defn connect
   "Returns a peer connection that can be used to send events, make rpc requests, and
   subscribe to peer event channels."
-  [& {:keys [url api host port path on-error]
+  [& {:keys [url api host port path on-error on-disconnect on-event on-connect]
       :or {host DEFAULT-HOST
            port DEFAULT-PORT
            path DEFAULT-PATH
            on-error #(log/error "Error: " %)}
       :as args}]
   (go
-    (let [url (or url (format "ws://%s:%s/%s" host port path))
-          id (random-uuid)
-          peer-chan (<! (websocket-chan url id on-error))
-          ec (pub-chan peer-chan)
-          rpc-map* (atom {})]
-      (handle-rpc-events ec rpc-map*)
+    (let [url           (or url (format "ws://%s:%s/%s" host port path))
+          id            (random-uuid)
+          peer-chan     (<! (websocket-chan url id on-error on-connect))
+          dispatch-chan (async/chan DISPATCH-BUFFER-SIZE)
+          event-chan    (async/pub dispatch-chan :event)
+          rpc-map*      (atom {})]
+      (dispatch-events peer-chan dispatch-chan on-event on-error)
+      (handle-rpc-responses event-chan rpc-map*)
       {:peer-chan peer-chan
-       :event-chan ec
+       :event-chan event-chan
        :on-error on-error
+       :on-disconnect on-disconnect
+       :on-event on-event
        :rpc-map* rpc-map*
        :subscription-map* (atom {})
        :api* (atom api)})))

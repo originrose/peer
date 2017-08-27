@@ -1,6 +1,5 @@
 (ns think.peer.api
   (:require [clojure.repl :as repl]
-            [clojure.pprint :refer [pprint]]
             [clojure.string :as string]
             clojure.test))
 
@@ -37,27 +36,16 @@
       (apply partial f args)
       (assoc meta-data :partial-args args))))
 
-(defn wrap-args
-  "Takes a map of functions and a coll of args to close over for each function."
-  [fns args]
-  (reduce
-    (fn [fns [k f]]
-      (assoc fns k (with-partial-args f args)))
-    {}
-    fns))
-
 (defn ns-api
   "Return an API spec given a namespace."
-  [ns-sym & {:keys [partial-args]}]
+  [ns-sym]
   (let [fns (ns-fns ns-sym)
         {:keys [event rpc subscription]} (group-by #(or (:api/type (meta %)) :rpc) fns)
         fns->map #(into {} (map (fn [f] [(:name (meta f)) f]) %))
-        fns-map  (fns->map rpc)]
-    {:rpc          (if partial-args
-                     (apply wrap-args fns-map partial-args)
-                     fns-map)
-     :event        (fns->map event)
-     :subscription (fns->map subscription)}))
+        api {:rpc          (fns->map rpc)
+             :event        (fns->map event)
+             :subscription (fns->map subscription)}]
+    api))
 
 (defn html-function-doc
   [f-var]

@@ -25,41 +25,46 @@
   (apply f (apply concat (butlast args) (last args))))
 
 (defn run-handler
-  [ctx handler req]
-  (let [msg-args (:args req)
-        {:keys [arglists partial-args]} (meta handler)
-        n (+ (count msg-args) (count partial-args))
+  [handler {:keys [args]}]
+  (let [{:keys [arglists partial-args]} (meta handler)
+        n (count args)
         arg-counts (map count arglists)
         ok? (some #(= n %) arg-counts)
         optional? (first (filter #(= '& (first %)) arglists))]
     (cond
-      ok? (if ctx
-            (apply handler ctx msg-args)
-            (apply handler msg-args))
-      optional? (if ctx
-                  (handler ctx)
-                  (handler))
+      ok?       (apply handler args)
+      optional? (handler)
       ;; TODO: This is not surfacing from a System using think.peer...
       :default (throw (ex-info (str "Incorrect number of arguments passed to function: "
                                     n " for function " handler " with arglists " arglists)
                                {})))))
 
 (defn event-handler
-  [api req ctx]
+  [api req]
   (if-let [handler (get-in api [:event (:event req)])]
-    (run-handler ctx handler req)
+    (run-handler handler req)
     (log/info "Unhandled event: " req)))
 
+(defn run-middleware
+  [message fns]
+  (reduce
+    (fn [msg middleware-fn]
+      (middleware-fn msg))
+    message
+    fns))
+
 (defn rpc-event-handler
-  [api on-error {:keys [chan id] :as req} ctx]
+  [api on-error middleware {:keys [chan id] :as req}]
   (go
     (try
     (if-let [handler (get-in api [:rpc (:fn req)])]
-      (let [v (run-handler ctx handler req)
+      (let [v (run-handler handler req)
             res (if (satisfies? clojure.core.async.impl.protocols/ReadPort v)
                   (<! v)
-                  v)]
-        (>! chan {:event :rpc-response :id id :result res}))
+                  v)
+            response {:event :rpc-response :id id :result res}
+            response (run-middleware response (:on-leave middleware))]
+        (>! chan response))
       (throw (ex-info "Unhandled rpc-request: " req)))
     (catch Exception e
       (if (fn? on-error)
@@ -68,12 +73,10 @@
       (>! chan {:event :rpc-response :id id :result {:error (str e)}})))))
 
 (defn subscription-event-handler
-  [peers* peer-id api {:keys [chan id] :as req} ctx]
+  [peers* peer-id api {:keys [chan id] :as req}]
   (go
     (if-let [handler (get-in api [:subscription (:fn req)])]
-      (let [res (if ctx
-                  (apply handler ctx (:args req))
-                  (apply handler (:args req)))
+      (let [res (apply handler (:args req))
             res (if (map? res) res {:chan res})
             pub-chan (:chan res)]
         (if (satisfies? clojure.core.async.impl.protocols/ReadPort pub-chan)
@@ -87,7 +90,7 @@
                       {})))))
 
 (defn unsubscription-event-handler
-  [peers* peer-id {:keys [id] :as req} ctx]
+  [peers* peer-id {:keys [id] :as req}]
   (let [{:keys [chan stop]} (get-in @peers* [peer-id :subscriptions id])]
     (swap! peers* update-in [peer-id :subscriptions] dissoc id)
     (when (fn? stop)
@@ -112,7 +115,8 @@
 
 (defn- api-router
   "Setup a router go-loop to handle received messages from a peer."
-  [{:keys [api* peers* on-error on-disconnect middleware ctx] :as listener} peer-id]
+  [{:keys [api* peers* on-error on-event on-disconnect middleware] :as listener}
+   peer-id]
   (let [peer (get @peers* peer-id)
         peer-chan (:chan peer)]
     (go-loop []
@@ -128,12 +132,15 @@
                 (let [message (assoc message
                                      :peer-id peer-id
                                      :chan peer-chan)
-                      event-type (:event message)]
+                      event-type (:event message)
+                      message (run-middleware message (:on-enter middleware))]
+                  (when on-event
+                    (on-event message))
                   (cond
-                    (= event-type :rpc) (rpc-event-handler @api* on-error message ctx)
-                    (= event-type :subscription) (subscription-event-handler peers* peer-id @api* message ctx)
-                    (= event-type :unsubscription) (unsubscription-event-handler peers* peer-id message ctx)
-                    :default (event-handler @api* message ctx)))
+                    (= event-type :rpc) (rpc-event-handler @api* on-error middleware message)
+                    (= event-type :subscription) (subscription-event-handler peers* peer-id @api* message)
+                    (= event-type :unsubscription) (unsubscription-event-handler peers* peer-id message)
+                    :default (event-handler @api* message)))
                 (catch Exception e
                   (when on-error
                     (on-error e))))
@@ -169,7 +176,7 @@
 
 
 (defn- page-template
-  [body]
+  [body css]
   {:status 200
    :headers {}
    :body (html
@@ -178,7 +185,7 @@
             [:meta {:charset "utf-8"}]
             [:meta {:name "viewport"
                     :content "width=device-width, initial-scale=1"}]
-            (include-css "css/style.css")]
+            (include-css css)]
            body])})
 
 (defn- app-page
@@ -188,8 +195,8 @@
       [:body
        [:div#app
         [:h3 "Clojurescript has not been compiled..."]]]
-      [:div (concat (map include-js js)
-                    (map include-css css))])))
+      (include-js js))
+    css))
 
 (defn- atom?
   [x]
@@ -199,6 +206,7 @@
   "A peer listener holds the state need to serve an API to a set of one or more peers.
   Requires a config map.
   * :api is an API map as described below
+  * :on-event a handler to receive every network event (fn [event-map] ...)
   * :on-connect a peer connect event handler (fn [peer-map] ...)
   * :on-disconnect a peer disconnect event handler (fn [peer-map] ...)
   * :on-error an error handler (fn [error] ...)
@@ -230,11 +238,12 @@
         :leave []}
      :on-error #(log/error %)})
   "
-  [{:keys [api middleware on-error on-connect on-disconnect packet-format]}]
+  [{:keys [api middleware on-event on-error on-connect on-disconnect packet-format]}]
   {:peers* (atom {})
    :api* (if (atom? api) api (atom api))
-   :middleware* (if (atom? middleware) middleware (atom middleware))
-   :on-error on-error
+   :middleware middleware
+   :on-event on-event
+   :on-error (or on-error #(log/error "Error: " %))
    :on-connect on-connect
    :on-disconnect on-disconnect
    :packet-format (or packet-format :transit-json)})
@@ -245,7 +254,6 @@
   Options:
     * api-ns: a namespace (symbol) to serve as a remote API)
     * api: an API map containing {:rpc [fns] :event [fns] :subscription [fns]}
-    * ctx: a context object that will get passed as the first arg to all handlers
     * ws-path: endpoint to host the websocket (default: \"/connect\")
     * app-path: endpoint for a minimal app-page, which contains a single #app div
       where you can mount an SPA using files from the js and css options - the
@@ -253,27 +261,23 @@
     * js: vector of javascript files to be served with app page
     * css: vector of css files to be served with the app page
 
-  (listen :api-ns 'my-app.ws-api)
-  (listen :api-ns 'my-app.ws-api :ctx system-map :ws-path \"/api\")
-  (listen :api api-map :port 4242)
-  (listen :api-ns 'my-app.remote.api :js [\"js/client.js\"] :css [\"css/client.css\"])
+  (listen {:api-ns 'my-app.ws-api})
+  (listen {:api-ns 'my-app.ws-api :ws-path \"/api\"})
+  (listen {:api api-map :port 4242})
+  (listen {:api-ns 'my-app.remote.api :js [\"js/client.js\"] :css [\"css/client.css\"]})
   "
-  [& {:keys [api-ns api ctx listener packet-format
-             port ws-path app-path js css] :as args}]
+  [{:keys [api-ns api listener packet-format
+           port ws-path app-path js css] :as config}]
   (let [port     (or port DEFAULT-PEER-PORT)
         ws-path  (or ws-path "connect")
         app-path (or app-path "")
         listener (cond
                    (map? listener)  listener
-                   (map? api)       (peer-listener api)
-                   (symbol? api-ns) (peer-listener (api/ns-api api-ns))
+                   (map? api)       (peer-listener {:api api})
+                   (symbol? api-ns) (peer-listener {:api (api/ns-api api-ns)})
                    :error   (throw
                               (Exception.
                                 "Must supply an ns symbol, api map, or peer listener.")))
-        listener (if ctx
-                   (assoc listener :ctx ctx)
-                   listener)
-
         routes   {ws-path (partial connect-listener listener)}
         routes   (if (or js css)
                    (assoc routes app-path (partial app-page js css) )
@@ -285,10 +289,16 @@
            :port port
            :server (http-kit/run-server app {:port port}))))
 
+(defn event
+  [{:keys [chan] :as peer} event & args]
+  (let [e {:event event :args args :id (java.util.UUID/randomUUID)}]
+    (async/put! chan e)))
+
 (defn close
   [{:keys [server peers*] :as s}]
   (disconnect-all-peers peers*)
   (when-let [server (:server s)]
     (server)
     (dissoc s :server)))
+
 
