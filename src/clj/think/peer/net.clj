@@ -25,7 +25,7 @@
   (apply f (apply concat (butlast args) (last args))))
 
 (defn run-handler
-  [handler req]
+  [ctx handler req]
   (let [msg-args (:args req)
         {:keys [arglists partial-args]} (meta handler)
         n (+ (count msg-args) (count partial-args))
@@ -33,24 +33,28 @@
         ok? (some #(= n %) arg-counts)
         optional? (first (filter #(= '& (first %)) arglists))]
     (cond
-      ok? (apply handler msg-args)
-      optional? (handler)
+      ok? (if ctx
+            (apply handler ctx msg-args)
+            (apply handler msg-args))
+      optional? (if ctx
+                  (handler ctx)
+                  (handler))
       ;; TODO: This is not surfacing from a System using think.peer...
       :default (throw (ex-info (str "Incorrect number of arguments passed to function: "
                                     n " for function " handler " with arglists " arglists)
                                {})))))
 
 (defn event-handler
-  [api req]
+  [api req ctx]
   (if-let [handler (get-in api [:event (:event req)])]
-    (run-handler handler req)
+    (run-handler ctx handler req)
     (log/info "Unhandled event: " req)))
 
 (defn rpc-event-handler
-  [api {:keys [chan id] :as req}]
+  [api {:keys [chan id] :as req} ctx]
   (go
     (if-let [handler (get-in api [:rpc (:fn req)])]
-      (let [v (run-handler handler req)
+      (let [v (run-handler ctx handler req)
             res (if (satisfies? clojure.core.async.impl.protocols/ReadPort v)
                   (<! v)
                   v)]
@@ -58,10 +62,12 @@
       (log/error "Unhandled rpc-request: " req))))
 
 (defn subscription-event-handler
-  [peers* peer-id api {:keys [chan id] :as req}]
+  [peers* peer-id api {:keys [chan id] :as req} ctx]
   (go
     (if-let [handler (get-in api [:subscription (:fn req)])]
-      (let [res (apply handler (:args req))
+      (let [res (if ctx
+                  (apply handler ctx (:args req))
+                  (apply handler (:args req)))
             res (if (map? res) res {:chan res})
             pub-chan (:chan res)]
         (if (satisfies? clojure.core.async.impl.protocols/ReadPort pub-chan)
@@ -75,7 +81,7 @@
                       {})))))
 
 (defn unsubscription-event-handler
-  [peers* peer-id {:keys [id] :as req}]
+  [peers* peer-id {:keys [id] :as req} ctx]
   (let [{:keys [chan stop]} (get-in @peers* [peer-id :subscriptions id])]
     (swap! peers* update-in [peer-id :subscriptions] dissoc id)
     (when (fn? stop)
@@ -100,7 +106,7 @@
 
 (defn- api-router
   "Setup a router go-loop to handle received messages from a peer."
-  [{:keys [api* peers*] :as listener} peer-id]
+  [{:keys [api* peers* ctx] :as listener} peer-id]
   (let [peer-chan (get-in @peers* [peer-id :chan])]
     (go-loop []
       (let [{:keys [message error] :as packet} (<! peer-chan)]
@@ -116,10 +122,10 @@
                                    :chan peer-chan)
                     event-type (:event message)]
                 (cond
-                  (= event-type :rpc) (rpc-event-handler @api* message)
-                  (= event-type :subscription) (subscription-event-handler peers* peer-id @api* message)
-                  (= event-type :unsubscription) (unsubscription-event-handler peers* peer-id message)
-                  :default (event-handler @api* message)))
+                  (= event-type :rpc) (rpc-event-handler @api* message ctx)
+                  (= event-type :subscription) (subscription-event-handler peers* peer-id @api* message ctx)
+                  (= event-type :unsubscription) (unsubscription-event-handler peers* peer-id message ctx)
+                  :default (event-handler @api* message ctx)))
               (recur))))))))
 
 (defn connect-listener
@@ -204,21 +210,44 @@
 ;
 ;  (connect-listener listener request)
 ;
-; Or you can use serve-api to serve the API on a port (listening for websocket
+; Or you can use listen to serve an API on a port (listening for websocket
 ; requests), optionally also serving files and a cljs app.
 
 (defn listen
-  "Serve an API on a specified port, listening for websocket connections.  The optional
-  :app-path argument is the path to a compiled cljs app which will be mounted into an
-  #app div when the root URL is requested.  The optional :ws-path determines the path used
-  to connect to the websocket."
-  [& {:keys [listener port ws-path js css] :as args}]
+  "Serve an API over a websocket, and optionally other resources.
+  Options:
+    * api-ns: a namespace (symbol) to serve as a remote API)
+    * api: an API map containing {:rpc [fns] :event [fns] :subscription [fns]}
+    * ctx: a context object that will get passed as the first arg to all handlers
+    * ws-path: endpoint to host the websocket (default: \"/connect\")
+    * app-path: endpoint for a minimal app-page, which contains a single #app div
+      where you can mount an SPA using files from the js and css options - the
+      default is an empty path.
+    * js: vector of javascript files to be served with app page
+    * css: vector of css files to be served with the app page
+
+  (listen :api-ns 'my-app.ws-api)
+  (listen :api-ns 'my-app.ws-api :ctx system-map :ws-path \"/api\")
+  (listen :api api-map :port 4242)
+  (listen :api-ns 'my-app.remote.api :js [\"js/client.js\"] :css [\"css/client.css\"])
+  "
+  [& {:keys [api-ns api ctx listener port ws-path app-path js css] :as args}]
   (log/debug (format "(listen %s)" args))
   (let [port (or port DEFAULT-PEER-PORT)
         ws-path (or ws-path "connect")
+        app-path (or app-path "")
+        listener (cond
+                   api      (peer-listener api)
+                   api-ns   (peer-listener (api/ns-api api-ns))
+                   :error   (throw
+                              (Exception.
+                                "Listen requires an api ns or an api map.")))
+        listener (if ctx
+                   (assoc listener :ctx ctx)
+                   listener)
         routes {ws-path (partial connect-listener listener)}
         routes (if (or js css)
-                 (assoc routes "" (partial app-page js css) )
+                 (assoc routes app-path (partial app-page js css) )
                  routes)
         app (-> (make-handler ["/" routes])
                 (wrap-resource "public")
