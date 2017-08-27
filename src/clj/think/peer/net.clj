@@ -116,7 +116,6 @@
             (disconnect-peer peers* peer-id))
           (do
             (when message
-              (log/info message)
               (let [message (assoc message
                                    :peer-id peer-id
                                    :chan peer-chan)
