@@ -1,7 +1,7 @@
 (defproject simple "0.1.0-SNAPSHOT"
-  :dependencies [[org.clojure/clojure "1.9.0-alpha14"]
+  :dependencies [[org.clojure/clojure "1.9.0-alpha19"]
                  [org.clojure/clojurescript "1.9.293"]
-                 [thinktopic/think.peer "0.2.7-SNAPSHOT"]
+                 [thinktopic/think.peer "0.3.0-SNAPSHOT"]
                  [reagent "0.6.0"]]
   :main ^:skip-aot simple.server
 
