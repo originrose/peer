@@ -5,7 +5,9 @@
 
 (defn -main
   [& args]
-  (peer/listen {:port 4242
-                :api-ns 'simple.api
-                :js "js/think.peer.js"
-                :css "css/styles.css"}))
+  (let [port 4242]
+    (peer/listen {:port port
+                  :api-ns 'simple.api
+                  :js "js/think.peer.js"
+                  :css "css/styles.css"})
+    (println "Started peer server on port:" port)))

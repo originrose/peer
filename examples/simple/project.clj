@@ -1,5 +1,5 @@
 (defproject simple "0.1.0-SNAPSHOT"
-  :dependencies [[org.clojure/clojure "1.9.0-alpha19"]
+  :dependencies [[org.clojure/clojure "1.9.0-alpha14"]
                  [org.clojure/clojurescript "1.9.293"]
                  [thinktopic/think.peer "0.3.0-SNAPSHOT"]
                  [reagent "0.6.0"]]
@@ -14,6 +14,8 @@
   :figwheel {:builds-to-start ["dev"]}
 
   :source-paths ["src/clj"]
+
+  :clean-targets ^{:protect false} [:target-path "figwheel_server.log" "resources/public/js"]
 
   :cljsbuild {:builds
               [{:id "dev"

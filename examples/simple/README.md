@@ -1,36 +1,23 @@
 # simple
 
-FIXME: description
-
-## Installation
-
-Download from http://example.com/FIXME.
-
 ## Usage
 
-FIXME: explanation
+First:
 
-    $ java -jar simple-0.1.0-standalone.jar [args]
+```
+$ mkdir -p resources/public
+$ lein run
+```
 
-## Options
+Then:
 
-FIXME: listing of options this app accepts.
+```
+lein figwheel
+```
 
-## Examples
-
-...
-
-### Bugs
-
-...
-
-### Any Other Sections
-### That You Think
-### Might be Useful
+Finally
+[http://localhost:3449](http://localhost:3449)
 
 ## License
 
-Copyright © 2016 FIXME
-
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
+Copyright © 2017 ThinkTopic, LLC

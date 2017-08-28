@@ -1,6 +1,6 @@
 (defproject thinktopic/think.peer "0.3.0-SNAPSHOT"
   :description "P2P - Clojure(Script) style"
-  :dependencies [[org.clojure/clojure "1.9.0-alpha19"]
+  :dependencies [[org.clojure/clojure "1.9.0-alpha14"]
                  [org.clojure/clojurescript "1.9.293"]
                  [org.clojure/core.async "0.3.442"]
                  [com.taoensso/timbre "4.8.0"]
@@ -26,7 +26,7 @@
                   ["vcs" "commit"]
                   ["vcs" "push"]]
 
-  :clean-targets ^{:protect false} [:target-path "figwheel-server.log" "resources/public/js/test/"]
+  :clean-targets ^{:protect false} [:target-path "figwheel_server.log" "resources/public/js/test/"]
 
   :repositories  {"snapshots" {:url "s3p://thinktopic.jars/snapshots/"
                                :no-auth true
