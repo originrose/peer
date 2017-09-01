@@ -10,6 +10,7 @@
     [ring.middleware.file :refer [wrap-file]]
     [bidi.ring :refer [make-handler]]
     [clojure.core.async :refer [<! >! go go-loop] :as async]
+    [think.peer.websocket-client :as ws-client]
     [think.peer.api :as api])
   (:import [org.fressian.handlers WriteHandler ReadHandler]
            [org.fressian.impl ByteBufferInputStream BytesOutputStream]))
@@ -233,4 +234,126 @@
   (when-let [server (:server s)]
     (server)
     (dissoc s :server)))
+;
+
+(def DEFAULT-HOST "localhost")
+(def DEFAULT-PORT 4242)
+(def DEFAULT-PATH "connect")
+
+(def RPC-TIMEOUT 3000)
+(def DISPATCH-BUFFER-SIZE 64)                               ; # of incoming msgs to buffer
+
+(defn- dispatch-events
+  [server-chan dispatch-chan]
+  "Dispatch messages from server socket onto the event chan, where
+  they can easily be subscribed to by :event type. "
+  (go-loop []
+    (let [packet (<! server-chan)
+          {:keys [message error]} packet]
+      (if error
+        (log/error "Websocket Error on server channel: " error)
+        (do
+          (>! dispatch-chan message)
+          (recur))))))
+
+(defn- pub-chan
+  "Takes a readable chan, returns a core.async/pub chan that can be
+  subscribed to in order to receive server events of a specific type."
+  [server-chan]
+  (let [dispatch-chan (async/chan DISPATCH-BUFFER-SIZE)
+        event-chan    (async/pub dispatch-chan :event)]
+    (dispatch-events server-chan dispatch-chan)
+    event-chan))
+
+;; this is built in to cljs.core, but we need to write our own in clj
+(defn random-uuid [] (str (java.util.UUID/randomUUID)))
+(defn- websocket-chan
+  [url peer-id error-fn]
+  (go
+    (let [conn (<! (ws-client/ws-ch url {:format :transit-json}))
+          _ (println "conn:")
+          _ (println conn)
+          {:keys [ws-channel error]} conn
+          _    (>! ws-channel {:type :connect :client-id peer-id})
+          {:keys [message error]} (<! ws-channel)]
+      (if error
+        (if error-fn
+          (error-fn {:error :connect
+                     :host  url}))
+        (do
+          (log/info "Connected to host: " url)
+          ws-channel)))))
+
+(defn- event-type-chan
+  "Returns a channel onto which all server events of a specific type will be placed."
+  [event-chan event-type & [buf]]
+  (let [c (if buf (async/chan buf) (async/chan))]
+    (async/sub event-chan event-type c)
+    c))
+
+(defn- handle-rpc-events
+  [event-chan rpc-map*]
+  (let [rpc-events (event-type-chan event-chan :rpc-response)]
+    (go-loop []
+      (let [{id :id :as event} (<! rpc-events)]
+        ;; FIXME: this is a hack, convert to strings as transit UUIDs aren't the same as core UUIDs
+        (when-let [res-chan (get (into {} (map (fn [[k v]] [(str k) v]) @rpc-map*)) (str id))]
+          ; (get @rpc-map* id)
+
+          (>! res-chan event)
+          (swap! rpc-map* dissoc id)))
+      (recur))))
+
+(defn request
+  "Make an RPC request to the server. Returns a channel that will receive the result, or nil on error.
+  (The error will be logged to the console.)"
+  [{:keys [rpc-map* peer-chan timeout error-fn] :as conn} fun & [args]]
+  (let [req-id (random-uuid)
+        res-chan (async/chan)
+        t-out (async/timeout (or timeout RPC-TIMEOUT))
+        event {:event :rpc :id req-id :fn fun :args (or args [])}]
+    (swap! rpc-map* assoc req-id res-chan)
+    (go
+      (>! peer-chan event)
+      (let [[v port] (async/alts! [res-chan t-out])]
+        (cond
+          ; The request timed out
+          (= port t-out) (do
+                           (swap! rpc-map* dissoc req-id)
+                           (if error-fn
+                             (error-fn (assoc event :error :timeout))))
+
+          ; Got response
+          (and (= port res-chan)
+               (:result v))      (:result v)
+
+          ; Got error
+          (and (= port res-chan)
+               (:error v)) (if error-fn
+                             (error-fn (merge event v))))))))
+
+(defn connect
+  "Returns a peer connection that can be used to send events, make rpc requests, and
+  subscribe to peer event channels."
+  [& {:keys [url api host port path error-fn]
+      :or   {host     DEFAULT-HOST
+             port     DEFAULT-PORT
+             path     DEFAULT-PATH
+             error-fn #(log/error "Error: " %)}
+      :as   args}]
+  (go
+    (let [url       (or url (format "ws://%s:%s/%s" host port path))
+          id        (random-uuid)
+          _ (println "before peer-chan")
+          peer-chan (<! (websocket-chan url id error-fn))
+          _ (println "after peer-chan")
+          ec        (pub-chan peer-chan)
+          rpc-map*  (atom {})]
+      (handle-rpc-events ec rpc-map*)
+      {:peer-chan         peer-chan
+       :event-chan        ec
+       :error-fn          error-fn
+       :rpc-map*          rpc-map*
+       :subscription-map* (atom {})
+       :api*              (atom api)})))
 
