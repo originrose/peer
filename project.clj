@@ -3,6 +3,7 @@
   :dependencies [[org.clojure/clojure "1.9.0-alpha14"]
                  [org.clojure/clojurescript "1.9.293"]
                  [org.clojure/core.async "0.3.442"]
+                 [io.pedestal/pedestal.interceptor "0.5.2"]
                  [com.taoensso/timbre "4.8.0"]
                  [http-kit "2.2.0"]
                  [jarohen/chord "0.8.1" :exclusions [org.clojure/tools.reader]]

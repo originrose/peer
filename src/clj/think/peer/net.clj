@@ -10,11 +10,28 @@
     [ring.middleware.file :refer [wrap-file]]
     [bidi.ring :refer [make-handler]]
     [clojure.core.async :refer [<! >! go go-loop] :as async]
-    [think.peer.api :as api])
+    [think.peer.api :as api]
+    [io.pedestal.interceptor.chain :as chain])
   (:import [org.fressian.handlers WriteHandler ReadHandler]
            [org.fressian.impl ByteBufferInputStream BytesOutputStream]))
 
 (def DEFAULT-PEER-PORT 4242)
+
+(defn disconnect-peer
+  [peers* peer-id]
+  (let [peer (get @peers* peer-id)]
+    (swap! peers* dissoc peer-id)
+    (if-let [peer-chan (:chan peer)]
+      (async/close! peer-chan))
+    (doseq [[sub-id {:keys [chan stop]}] (:subscriptions peer)]
+      (when (fn? stop)
+        (stop))
+      (async/close! chan))))
+
+(defn disconnect-all-peers
+  [peers*]
+  (doseq [peer-id (keys @peers*)]
+    (disconnect-peer peers* peer-id)))
 
 (defn mapply
   "Apply a map as keyword args to a function.
@@ -39,83 +56,103 @@
                                     n " for function " handler " with arglists " arglists)
                                {})))))
 
-(defn event-handler
-  [api req]
-  (if-let [handler (get-in api [:event (:event req)])]
-    (run-handler handler req)
-    (log/info "Unhandled event: " req)))
 
-(defn run-middleware
-  [message fns]
-  (reduce
-    (fn [msg middleware-fn]
-      (middleware-fn msg))
-    message
-    fns))
+(def event-handler
+  {:name ::event-handler
+   :enter
+   (fn [{:keys [api request] :as context}]
+     (if-let [handler (get-in api [:event (:event request)])]
+       (do
+         (run-handler handler request)
+         context)
+       (assoc context :io.pedestal.interceptor.chain/error (ex-info (str "Unhandled event") request))))})
 
-(defn rpc-event-handler
-  [api on-error middleware {:keys [chan id] :as req}]
-  (go
-    (try
-    (if-let [handler (get-in api [:rpc (:fn req)])]
-      (let [v (run-handler handler req)
-            res (if (satisfies? clojure.core.async.impl.protocols/ReadPort v)
-                  (<! v)
-                  v)
-            response {:event :rpc-response :id id :result res}
-            response (run-middleware response (:on-leave middleware))]
-        (>! chan response))
-      (throw (ex-info "Unhandled rpc-request: " req)))
-    (catch Exception e
-      (if (fn? on-error)
-        (on-error e)
-        (log/error e))
-      (>! chan {:event :rpc-response :id id :result {:error (str e)}})))))
 
-(defn subscription-event-handler
-  [peers* peer-id api {:keys [chan id] :as req}]
-  (go
-    (if-let [handler (get-in api [:subscription (:fn req)])]
-      (let [res (apply handler (:args req))
-            res (if (map? res) res {:chan res})
-            pub-chan (:chan res)]
-        (if (satisfies? clojure.core.async.impl.protocols/ReadPort pub-chan)
-          (let [event-wrapper (async/chan 1 (map (fn [v] {:event :publication :id id :value v})))]
-            (async/pipe pub-chan event-wrapper)
-            (async/pipe event-wrapper chan)
-            (swap! peers* assoc-in [peer-id :subscriptions id] res))
-          (throw (ex-info (str "Subscription function didn't return a publication channel:" req)
-                          {}))))
-      (throw (ex-info (str "Unhandled subscription request: " req)
-                      {})))))
+(def subscription-handler
+  {:name ::subscription-handler
+   :enter
+   (fn [{:keys [peers* peer-id api chan request] :as context}]
+     (if-let [handler (get-in api [:subscription (:fn request)])]
+       (let [res (apply handler (:args request))
+             res (if (map? res) res {:chan res})
+             pub-chan (:chan res)
+             id (:id request)]
+         (if (satisfies? clojure.core.async.impl.protocols/ReadPort pub-chan)
+           (let [event-wrapper (async/chan 1 (map (fn [v] {:event :publication :id id :value v})))]
+             (async/pipe pub-chan event-wrapper)
+             (async/pipe event-wrapper chan)
+             (swap! peers* assoc-in [peer-id :subscriptions id] res)
+             context)
+           (throw (ex-info "Subscription function didn't return a publication channel" request))))
+       (throw (ex-info "Unhandled subscription request" request))))})
 
-(defn unsubscription-event-handler
-  [peers* peer-id {:keys [id] :as req}]
-  (let [{:keys [chan stop]} (get-in @peers* [peer-id :subscriptions id])]
-    (swap! peers* update-in [peer-id :subscriptions] dissoc id)
-    (when (fn? stop)
-      (stop))
-    (async/close! chan)))
 
-(defn disconnect-peer
-  [peers* peer-id]
-  (let [peer (get @peers* peer-id)]
-    (swap! peers* dissoc peer-id)
-    (if-let [peer-chan (:chan peer)]
-      (async/close! peer-chan))
-    (doseq [[sub-id {:keys [chan stop]}] (:subscriptions peer)]
-      (when (fn? stop)
-        (stop))
-      (async/close! chan))))
+(def unsubscription-handler
+  {:name ::unsubscription-handler
+   :enter
+   (fn [{:keys [peers* peer-id request] :as context}]
+     (let [id (:id request)
+           {:keys [chan stop]} (get-in @peers* [peer-id :subscriptions id])]
+       (swap! peers* update-in [peer-id :subscriptions] dissoc id)
+       (when (fn? stop)
+         (stop))
+       (async/close! chan)
+       context))})
 
-(defn disconnect-all-peers
-  [peers*]
-  (doseq [peer-id (keys @peers*)]
-    (disconnect-peer peers* peer-id)))
+
+(def rpc-responder
+  {:name ::rpc-responder
+   :leave (fn [{:keys [chan response] :as context}]
+            (println "rpc response: " response)
+            (go (>! chan response))
+            context)
+   :error (fn [{:keys [chan request] :as context} error]
+            (let [response {:event :rpc-response :id (:id request) :result {:error (ex-data error)}}]
+              (go (>! chan response))
+              (assoc context :io.pedestal.interceptor.chain/error response)))})
+
+
+(def rpc-handler
+  {:name ::rpc-handler
+   :enter
+   (fn [{:keys [api middleware request] :as context}]
+     (let [context (chain/enqueue context [rpc-responder])]
+       (go
+         (if-let [handler (get-in api [:rpc (:fn request)])]
+           (try
+             (let [v (run-handler handler request)
+                   id (:id request)
+                   res-val (if (satisfies? clojure.core.async.impl.protocols/ReadPort v)
+                             (<! v)
+                             v)
+                   response {:event :rpc-response :id id :result res-val}
+                   context (assoc context :response response)]
+               context)
+             (catch Exception e
+               (assoc context :io.pedestal.interceptor.chain/error e)))
+           (assoc context :io.pedestal.interceptor.chain/error (ex-info "Unhandled rpc-request" request))))))})
+
+
+(defn API-HANDLERS
+  []
+  {:rpc            rpc-handler
+   :subscription   subscription-handler
+   :unsubscription unsubscription-handler
+   :default        event-handler})
+
+
+(def api-middleware
+  {:name ::api-router
+   :enter (fn [{:keys [request] :as context}]
+            (let [event-type (:event request)
+                  handler (get (API-HANDLERS) event-type event-handler)
+                  ctx (chain/enqueue context [handler])]
+              ctx))})
+
 
 (defn- api-router
   "Setup a router go-loop to handle received messages from a peer."
-  [{:keys [api* peers* on-error on-event on-disconnect middleware] :as listener}
+  [{:keys [api* peers* on-disconnect middleware] :as listener}
    peer-id]
   (let [peer (get @peers* peer-id)
         peer-chan (:chan peer)]
@@ -128,23 +165,15 @@
             (disconnect-peer peers* peer-id))
           (do
             (when message
-              (try
-                (let [message (assoc message
-                                     :peer-id peer-id
-                                     :chan peer-chan)
-                      event-type (:event message)
-                      message (run-middleware message (:on-enter middleware))]
-                  (when on-event
-                    (on-event message))
-                  (cond
-                    (= event-type :rpc) (rpc-event-handler @api* on-error middleware message)
-                    (= event-type :subscription) (subscription-event-handler peers* peer-id @api* message)
-                    (= event-type :unsubscription) (unsubscription-event-handler peers* peer-id message)
-                    :default (event-handler @api* message)))
-                (catch Exception e
-                  (when on-error
-                    (on-error e))))
+              (let [context {:request message
+                             :api @api*
+                             :peer-id peer-id
+                             :peers* peers*
+                             :chan peer-chan}
+                    context (chain/enqueue context (concat middleware [api-middleware]))]
+                    (chain/execute context))
               (recur))))))))
+
 
 (defn connect-listener
   "Connect an API listener to a websocket.  Takes an http-kit request
@@ -188,6 +217,7 @@
             (include-css css)]
            body])})
 
+
 (defn- app-page
   [js css request]
   (page-template
@@ -198,18 +228,19 @@
       (include-js js))
     css))
 
+
 (defn- atom?
   [x]
   (instance? clojure.lang.Atom x))
+
 
 (defn peer-listener
   "A peer listener holds the state need to serve an API to a set of one or more peers.
   Requires a config map.
   * :api is an API map as described below
-  * :on-event a handler to receive every network event (fn [event-map] ...)
   * :on-connect a peer connect event handler (fn [peer-map] ...)
   * :on-disconnect a peer disconnect event handler (fn [peer-map] ...)
-  * :on-error an error handler (fn [error] ...)
+  * :on-error an error handler for connection errors (fn [error] ...)
   * packet-format: websocket packet format (default: :transit-json)
 
   The API map contains three maps of handler functions:
@@ -233,16 +264,13 @@
       {:event {'ping #'my.ns/ping}
        :rpc   {'add-two #(+ %1 %2)}
        :subscription {'rand-val (fn [] {:chan (rand-eventer)})}}
-     :middleware
-       {:enter [request-logger]
-        :leave []}
+     :middleware [request-logger]
      :on-error #(log/error %)})
   "
-  [{:keys [api middleware on-event on-error on-connect on-disconnect packet-format]}]
+  [{:keys [api middleware on-error on-connect on-disconnect packet-format]}]
   {:peers* (atom {})
    :api* (if (atom? api) api (atom api))
    :middleware middleware
-   :on-event on-event
    :on-error (or on-error #(log/error "Error: " %))
    :on-connect on-connect
    :on-disconnect on-disconnect
@@ -289,10 +317,12 @@
            :port port
            :server (http-kit/run-server app {:port port}))))
 
+
 (defn event
   [{:keys [chan] :as peer} event & args]
   (let [e {:event event :args args :id (java.util.UUID/randomUUID)}]
     (async/put! chan e)))
+
 
 (defn close
   [{:keys [server peers*] :as s}]
