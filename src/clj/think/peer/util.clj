@@ -1,4 +1,4 @@
-(ns util
+(ns think.peer.util
   (:require [clojure.test :refer :all]
             [cognitect.transit :as transit]
             [think.peer.api :as api]
@@ -6,9 +6,11 @@
             [test-api])
   (:import [java.io ByteArrayInputStream ByteArrayOutputStream]))
 
+(defn uuid [] (str (java.util.UUID/randomUUID)))
+
 (defn edn->transit
   [edn]
-  (let [out (ByteArrayOutputStream. 4096)
+  (let [out (ByteArrayOutputStream.)
         writer (transit/writer out :json)]
     (transit/write writer edn)
     (.toString out)))
@@ -20,3 +22,6 @@
       (transit/reader :json)
       (transit/read)))
 
+(defn transit-bytes->edn
+  [byte-stream]
+  (transit/read (transit/reader byte-stream :json)))

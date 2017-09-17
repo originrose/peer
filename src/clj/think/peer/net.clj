@@ -11,6 +11,7 @@
     [bidi.ring :refer [make-handler]]
     [clojure.core.async :refer [<! >! go go-loop] :as async]
     [think.peer.api :as api]
+    [think.peer.util :as util]
     [io.pedestal.interceptor.chain :as chain])
   (:import [org.fressian.handlers WriteHandler ReadHandler]
            [org.fressian.impl ByteBufferInputStream BytesOutputStream]))
@@ -204,7 +205,7 @@
 
 
 (defn- page-template
-  [body css]
+  [body & [css]]
   {:status 200
    :headers {}
    :body (html
@@ -213,7 +214,7 @@
             [:meta {:charset "utf-8"}]
             [:meta {:name "viewport"
                     :content "width=device-width, initial-scale=1"}]
-            (include-css css)]
+            (when css (include-css css))]
            body])})
 
 
@@ -276,6 +277,33 @@
    :packet-format (or packet-format :transit-json)})
 
 
+(defn api-handler
+  [api req]
+  (let [parsed (re-find #"api/v([0-9]+)/(.*)/(.*)" (:uri req))]
+    (if (some nil? parsed)
+      {:status  404
+       :headers {"Content-Type" "application/transit+json"}
+       :body    (util/edn->transit {:error (str "Invalid request: " (:uri req))})}
+      (let [[_ version msg-type fn-name] parsed
+            handler (get-in api [(keyword msg-type) (symbol fn-name)])]
+        (try
+          (if handler
+            (let [body (util/transit-bytes->edn (:body req))
+                  id (:id body)
+                  res-val (run-handler handler body)
+                  res {:event :rpc-response :id id :result res-val}]
+              {:status  200
+               :headers {"Content-Type" "application/transit+json"}
+               :body    (util/edn->transit res)})
+            {:status  501
+             :headers {"Content-Type" "application/transit+json"}
+             :body    (util/edn->transit {:error (str "Invalid request: " (:uri req))})})
+          (catch Exception e
+            {:status  500
+             :headers {"Content-Type" "application/transit+json"}
+             :body    (util/edn->transit {:error (str "error: " e)})}))))))
+
+
 (defn listen
   "Serve an API over a websocket, and optionally other resources.
   Options:
@@ -305,11 +333,17 @@
                    :error   (throw
                               (Exception.
                                 "Must supply an ns symbol, api map, or peer listener.")))
-        routes   {ws-path (partial connect-listener listener)}
+        routes   {ws-path (partial connect-listener listener)
+                  "api/" {true (fn [req]
+                                 (api-handler @(:api* listener)))}
+                  "docs" (fn [_]
+                           (page-template (api/html-handler-docs @(:api* listener))))}
         routes   (if (or js css)
-                   (assoc routes app-path (partial app-page js css) )
+                   (assoc routes app-path (partial app-page js css))
                    routes)
-        app      (-> (make-handler ["/" routes])
+        routes ["/" routes]
+
+        app      (-> (make-handler routes)
                      (wrap-resource "public")
                      (wrap-file "resources/public" {:allow-symlinks? true}))]
     (assoc listener

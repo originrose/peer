@@ -3,11 +3,12 @@
             [clojure.core.async :refer [go go-loop >!! <!! <! >! chan alts! timeout sliding-buffer]]
             [taoensso.timbre :as log]
             [gniazdo.core :as ws]
+            [org.httpkit.client :as http]
             [think.peer.net :as net]
             [think.peer.api :as api]
             [io.pedestal.interceptor.chain :as chain]
             [test-api]
-            [util :refer [edn->transit transit->edn]]))
+            [think.peer.util :refer [uuid edn->transit transit->edn]]))
 
 (defn send-msg
   [socket msg]
@@ -121,8 +122,7 @@
    :leave (fn [context] (assoc-in context [:response :response-time] (- (System/currentTimeMillis) (:start-time context))))})
 
 (deftest middleware-test
-  (let [msgs* (atom [])
-        server (net/listen {:listener (net/peer-listener
+  (let [server (net/listen {:listener (net/peer-listener
                                        {:api {:rpc {'test-handler #'test-handler}}
                                         :middleware [log-timer
                                                      (partial-args [80])
@@ -136,5 +136,17 @@
         (is (contains? response :response-time))
         (is (= 42 (:foo response)))
         (ws/close socket))
+      (finally
+        (net/close server)))))
+
+(deftest http-api-test
+  (let [server (net/listen {:port 4242
+                            :api-ns 'test-api})]
+    (try
+      (let [msg (util/edn->transit {:id (uuid) :args [80 20 100]})
+            res (http/put "http://localhost:4242/api/v0/rpc/test-handler"
+                           {:body msg})
+            response (transit->edn (:body @res))]
+        (is (= 200 (:result response))))
       (finally
         (net/close server)))))

@@ -9,7 +9,7 @@ requests or as a websocket interface.
 
 Add the library to your dependencies like so:
 
-    [thinktopic/think.peer "0.2.7"]
+    [thinktopic/think.peer "0.3.0"]
 
 In Clojure you point to a namespace to expose its functions as
 event/rpc/subscription handlers.
@@ -45,11 +45,43 @@ placed.
 
     (def dbs* (atom nil))
 
-    (net/send-event 'hello-event)
-    (let [cnt-chan (net/subscribe-to 'second-counter)]
-      (go
-        (<! (net/connect-to-server "ws://localhost:1212/connect"))
-        (reset! dbs* (<! (net/request 'dbs-get)))))
+    (go
+     (let [conn (<! (net/connect "ws://localhost:1212/connect"))
+           (net/event conn 'hello-event)
+           (reset! dbs* (<! (net/request 'dbs-get)))]
+         (go-loop [counter (net/subscribe conn 'second-counter)]
+           (println (<! counter))
+           (recur counter))))
+
+
+## HTTP Requests
+
+The same functions exposed over a websocket for :rpc and :event handlers can
+also be served as regular HTTP endpoints using the think.peer.api/api-handler
+function.  This function is a typical ring handler that takes the API map and
+an HTTP request, and it returns an HTTP response.
+
+If you use think.peer.net/listen it will automatically setup the api handler.
+A full example can be seen in the http-api-test unit test.
+
+    (net/listen {:port 4242 :api-ns 'test-api})
+
+Now you can access a test-handler function like this:
+
+    (let [msg (util/edn->transit {:id (uuid) :args [80 20 100]})
+                res (http/put "http://localhost:4242/api/v0/rpc/test-handler"
+                               {:body msg})
+                response (transit->edn (:body @res))]
+            (is (= 200 (:result response))))
+
+## Documentation
+
+If you use the think.peer.net/listen function to setup your API then html
+documentation will automatically be generated and served at /docs.
+
+    (def s (net/listen {:port 4242 :api-ns 'test-api}))
+
+Browse to "http://localhost:4242/docs" to see the documentation.
 
 ## Development
 

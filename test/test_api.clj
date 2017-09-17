@@ -7,6 +7,12 @@
   [in]
   in)
 
+(defn ^{:api/type :event}
+  click
+  "An event handler that prints a msg."
+  [msg]
+  (println "event: " msg))
+
 (defn ^{:api/type :rpc}
   bad-function
   "Trigger an error to test error handling."

@@ -1,6 +1,7 @@
 (ns think.peer.api
   (:require [clojure.repl :as repl]
             [clojure.string :as string]
+            [think.peer.util :as util]
             clojure.test))
 
 (defn namespaces
@@ -82,15 +83,3 @@
      (map-indexed (fn [i [k v]]
                     ^{:key (str "subscription-" i)}(html-function-doc v))
                   subscription)]]])
-
-
-(defn api-handler
-  [handlers req]
-  (let [parsed (re-find #"api/v([0-9]+)/(.*)/(.*)" (:uri req))]
-    (if (some nil? parsed)
-      [:div.error "Invalid request:" (:uri req)]
-      (let [[_ version msg-type fn-name] parsed
-            handler (get-in handlers [(keyword msg-type) (symbol fn-name)])]
-        (try (handler (:params req))
-             (catch Exception e
-               [:div "Exception: " (str e)]))))))
