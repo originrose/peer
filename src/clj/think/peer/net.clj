@@ -103,34 +103,34 @@
 (def rpc-responder
   {:name ::rpc-responder
    :leave (fn [{:keys [chan response] :as context}]
-            (println "rpc response: " response)
-            (go (>! chan response))
+            (when response
+              (go (>! chan response)))
             context)
    :error (fn [{:keys [chan request] :as context} error]
-            (let [response {:event :rpc-response :id (:id request) :result {:error (ex-data error)}}]
+            (let [response {:event :rpc-response :id (:id request)
+                            :error (str error)}]
               (go (>! chan response))
-              (assoc context :io.pedestal.interceptor.chain/error response)))})
+              (assoc context :response response)))})
 
 
 (def rpc-handler
   {:name ::rpc-handler
    :enter
    (fn [{:keys [api middleware request] :as context}]
-     (let [context (chain/enqueue context [rpc-responder])]
-       (go
-         (if-let [handler (get-in api [:rpc (:fn request)])]
-           (try
-             (let [v (run-handler handler request)
-                   id (:id request)
-                   res-val (if (satisfies? clojure.core.async.impl.protocols/ReadPort v)
-                             (<! v)
-                             v)
-                   response {:event :rpc-response :id id :result res-val}
-                   context (assoc context :response response)]
-               context)
-             (catch Exception e
-               (assoc context :io.pedestal.interceptor.chain/error e)))
-           (assoc context :io.pedestal.interceptor.chain/error (ex-info "Unhandled rpc-request" request))))))})
+     (go
+       (if-let [handler (get-in api [:rpc (:fn request)])]
+         (try
+           (let [v (run-handler handler request)
+                 id (:id request)
+                 res-val (if (satisfies? clojure.core.async.impl.protocols/ReadPort v)
+                           (<! v)
+                           v)
+                 response {:event :rpc-response :id id :result res-val}
+                 context (assoc context :response response)]
+             context)
+           (catch Exception e
+             (assoc context :io.pedestal.interceptor.chain/error e)))
+         (assoc context :io.pedestal.interceptor.chain/error (ex-info "Unhandled rpc-request" request)))))})
 
 
 (defn API-HANDLERS
@@ -145,9 +145,8 @@
   {:name ::api-router
    :enter (fn [{:keys [request] :as context}]
             (let [event-type (:event request)
-                  handler (get (API-HANDLERS) event-type event-handler)
-                  ctx (chain/enqueue context [handler])]
-              ctx))})
+                  handler (get (API-HANDLERS) event-type event-handler)]
+              (chain/enqueue context [handler])))})
 
 
 (defn- api-router
@@ -170,8 +169,8 @@
                              :peer-id peer-id
                              :peers* peers*
                              :chan peer-chan}
-                    context (chain/enqueue context (concat middleware [api-middleware]))]
-                    (chain/execute context))
+                    interceptors (concat [rpc-responder] middleware [api-middleware])]
+                (chain/execute context interceptors))
               (recur))))))))
 
 

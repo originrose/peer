@@ -5,6 +5,7 @@
             [gniazdo.core :as ws]
             [think.peer.net :as net]
             [think.peer.api :as api]
+            [io.pedestal.interceptor.chain :as chain]
             [test-api]
             [util :refer [edn->transit transit->edn]]))
 
@@ -30,6 +31,16 @@
   (send-msg socket {:event :subscription :id (java.util.UUID/randomUUID)
                     :fn fn-name :args args}))
 
+(defn pq
+  [m c]
+  (println m (:request c) (map :name (:io.pedestal.interceptor.chain/queue c)))
+  c)
+
+(defn ps
+  [m c]
+  (println m (:response c) (map :name (:io.pedestal.interceptor.chain/stack c)))
+  c)
+
 (deftest echo-test
   (let [error-count* (atom 0)
         connected?* (atom false)
@@ -43,7 +54,12 @@
                                         :middleware [{:name ::error.handler
                                                       :error (fn [ctx e]
                                                                (swap! error-count* inc)
-                                                               ctx)}]})
+                                                               (assoc ctx :io.pedestal.interceptor.chain/error e))}
+                                                     #_{:name ::foo
+                                                      :enter (fn [c] (pq "enter" c))
+                                                      :leave (fn [c] (ps "leave" c))
+                                                      }
+                                                     ]})
                            :port 4242})]
     (try
       (let [data "hello world"
@@ -52,8 +68,8 @@
         (is (= data (:result (transit->edn (<!! ch)))))
         (request socket 'bad-function)
         (request socket 'bad-function)
-        (is (contains? (:result (transit->edn (<!! ch))) :error))
-        (is (contains? (:result (transit->edn (<!! ch))) :error))
+        (is (contains? (transit->edn (<!! ch)) :error))
+        (is (contains? (transit->edn (<!! ch)) :error))
         (ws/close socket)
         (is (true? @connected?*))
         (is (= 2 @error-count*))
@@ -97,7 +113,6 @@
   [v]
   {:name ::merge-response
    :leave (fn [context]
-            (println "merge response... " (merge (:response context) v))
             (assoc context :response (merge (:response context) v)))})
 
 (def log-timer
@@ -117,7 +132,6 @@
       (let [[ch socket] (connect)
             _ (request socket 'test-handler 20 100)
             response (transit->edn (<!! ch))]
-        (println "response: " response)
         (is (= 200 (:result response)))
         (is (contains? response :response-time))
         (is (= 42 (:foo response)))
