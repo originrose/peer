@@ -19,6 +19,7 @@
 (defn multiply-ints
   "A function with args."
   [a b]
+  (Thread/sleep (rand-int 5000))
   (* a b))
 
 (s/fdef multiply-ints

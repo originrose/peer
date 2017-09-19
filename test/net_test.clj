@@ -8,11 +8,11 @@
             [think.peer.api :as api]
             [io.pedestal.interceptor.chain :as chain]
             [test-api]
-            [think.peer.util :refer [uuid edn->transit transit->edn]]))
+            [think.peer.util :as util]))
 
 (defn send-msg
   [socket msg]
-  (ws/send-msg socket (edn->transit msg)))
+  (ws/send-msg socket (util/edn->transit msg)))
 
 (defn connect
   []
@@ -66,11 +66,11 @@
       (let [data "hello world"
             [ch socket] (connect)]
         (request socket 'echo data)
-        (is (= data (:result (transit->edn (<!! ch)))))
+        (is (= data (:result (util/transit->edn (<!! ch)))))
         (request socket 'bad-function)
         (request socket 'bad-function)
-        (is (contains? (transit->edn (<!! ch)) :error))
-        (is (contains? (transit->edn (<!! ch)) :error))
+        (is (contains? (util/transit->edn (<!! ch)) :error))
+        (is (contains? (util/transit->edn (<!! ch)) :error))
         (ws/close socket)
         (is (true? @connected?*))
         (is (= 2 @error-count*))
@@ -87,7 +87,7 @@
       (let [[ch socket] (connect)]
         (subscription socket 'counter)
         (dotimes [i 11]
-          (let [msg (transit->edn (<!! ch))]
+          (let [msg (util/transit->edn (<!! ch))]
             (->> msg
                  (:value)
                  (= (- 10 i))
@@ -131,7 +131,7 @@
     (try
       (let [[ch socket] (connect)
             _ (request socket 'test-handler 20 100)
-            response (transit->edn (<!! ch))]
+            response (util/transit->edn (<!! ch))]
         (is (= 200 (:result response)))
         (is (contains? response :response-time))
         (is (= 42 (:foo response)))
@@ -143,10 +143,10 @@
   (let [server (net/listen {:port 4242
                             :api-ns 'test-api})]
     (try
-      (let [msg (util/edn->transit {:id (uuid) :args [80 20 100]})
+      (let [msg (util/edn->transit {:id (util/uuid) :args [80 20 100]})
             res (http/put "http://localhost:4242/api/v0/rpc/test-handler"
                            {:body msg})
-            response (transit->edn (:body @res))]
+            response (util/transit->edn (:body @res))]
         (is (= 200 (:result response))))
       (finally
         (net/close server)))))

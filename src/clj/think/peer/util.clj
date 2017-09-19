@@ -1,9 +1,5 @@
 (ns think.peer.util
-  (:require [clojure.test :refer :all]
-            [cognitect.transit :as transit]
-            [think.peer.api :as api]
-            [think.peer.net :as net]
-            [test-api])
+  (:require [cognitect.transit :as transit])
   (:import [java.io ByteArrayInputStream ByteArrayOutputStream]))
 
 (defn uuid [] (str (java.util.UUID/randomUUID)))

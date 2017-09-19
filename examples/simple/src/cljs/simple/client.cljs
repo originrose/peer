@@ -29,10 +29,16 @@
         (reset! c* v)
         (recur)))))
 
+(defn rand-multiply
+  [conn v*]
+  (go
+    (reset! v* (<! (net/request conn 'multiply-ints [(rand-int 10) (rand-int 10)])))))
+
 (defn test-page
   [conn]
   (let [data* (reagent/atom 100)
-        val-chan (net/subscribe conn 'rand-value-eventer 100 200 500)]
+        val-chan (net/subscribe conn 'rand-value-eventer 100 200 500)
+        v* (atom 0)]
     (go-loop []
       (when-let [v (<! val-chan)]
         (reset! data* v)
@@ -47,6 +53,12 @@
         [:div "count: " @c*]
         [:div {:style {:padding "5px"
                        :color :white
+                       :background-color :green}
+               :on-click #(rand-multiply conn v*)}
+         "Press Me"]
+        [:div (str @v*)]
+        [:div {:style {:padding "5px"
+                       :color :white
                        :background-color :blue
                        :width @data*}}
          (str (int @data*))]]])))
@@ -57,6 +69,10 @@
     (let [conn (<! (net/connect SERVER-URL))]
       (net/event conn 'hello-event)
       (listen-to-counter conn)
+      (go-loop []
+        (println "rpc-map: " @(:rpc-map* conn))
+        (<! (timeout 100))
+        (recur))
       (reagent/render [test-page conn] (.getElementById js/document "app")))))
 
 (-main)
