@@ -14,6 +14,11 @@
   (println "event: " msg))
 
 (defn ^{:api/type :rpc}
+  test-handler
+  [v a b]
+  (+ v a b))
+
+(defn ^{:api/type :rpc}
   bad-function
   "Trigger an error to test error handling."
   []

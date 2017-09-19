@@ -283,7 +283,7 @@
     (if (some nil? parsed)
       {:status  404
        :headers {"Content-Type" "application/transit+json"}
-       :body    (util/edn->transit {:error (str "Invalid request: " (:uri req))})}
+       :body    (util/edn->transit {:error (str "Invalid request URI: " (:uri req))})}
       (let [[_ version msg-type fn-name] parsed
             handler (get-in api [(keyword msg-type) (symbol fn-name)])]
         (try
@@ -297,7 +297,7 @@
                :body    (util/edn->transit res)})
             {:status  501
              :headers {"Content-Type" "application/transit+json"}
-             :body    (util/edn->transit {:error (str "Invalid request: " (:uri req))})})
+             :body    (util/edn->transit {:error (str "Cannot find handler for request: " (:uri req))})})
           (catch Exception e
             {:status  500
              :headers {"Content-Type" "application/transit+json"}
@@ -335,7 +335,7 @@
                                 "Must supply an ns symbol, api map, or peer listener.")))
         routes   {ws-path (partial connect-listener listener)
                   "api/" {true (fn [req]
-                                 (api-handler @(:api* listener)))}
+                                 (api-handler @(:api* listener) req))}
                   "docs" (fn [_]
                            (page-template (api/html-handler-docs @(:api* listener))))}
         routes   (if (or js css)

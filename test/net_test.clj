@@ -96,10 +96,6 @@
       (finally
         (net/close server)))))
 
-(defn test-handler
-  [v a b]
-  (+ v a b))
-
 (def assoc-uuid
   {:name ::attach-uuid
    :enter (fn [context] (assoc context ::uuid (java.util.UUID/randomUUID)))})
@@ -123,7 +119,7 @@
 
 (deftest middleware-test
   (let [server (net/listen {:listener (net/peer-listener
-                                       {:api {:rpc {'test-handler #'test-handler}}
+                                       {:api {:rpc {'test-handler #'test-api/test-handler}}
                                         :middleware [log-timer
                                                      (partial-args [80])
                                                      (merge-response {:foo 42})]})
