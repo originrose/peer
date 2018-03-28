@@ -44,7 +44,7 @@
 
 (defn run-handler
   [handler {:keys [args]}]
-  (let [{:keys [arglists partial-args]} (meta handler)
+  (let [{:keys [arglists]} (meta handler)
         n (count args)
         arg-counts (map count arglists)
         ok? (some #(= n %) arg-counts)
@@ -130,6 +130,7 @@
                  context (assoc context :response response)]
              context)
            (catch Exception e
+             (log/error :peer e)
              (assoc context :io.pedestal.interceptor.chain/error e)))
          (assoc context :io.pedestal.interceptor.chain/error (ex-info "Unhandled rpc-request" request)))))})
 

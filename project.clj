@@ -9,14 +9,14 @@
                  [jarohen/chord "0.8.1" :exclusions [org.clojure/tools.reader]]
                  [ring/ring-defaults "0.2.3"]
                  [bidi "2.0.16"]
-                 [stylefruits/gniazdo "1.0.0"]]
+                 [stylefruits/gniazdo "1.0.1"]
+                 [com.cognitect/transit-clj "0.8.300"]]
 
   :source-paths ["src/clj" "src/cljs"]
 
   :plugins [[s3-wagon-private "1.3.0"]]
 
-  :profiles {:test {:dependencies [[stylefruits/gniazdo "1.0.0"]
-                                   [com.cognitect/transit-clj "0.8.300"]]}}
+  :profiles {:test {:dependencies []}}
 
   :release-tasks [["vcs" "assert-committed"]
                   ["change" "version" "leiningen.release/bump-version" "release"]

@@ -16,10 +16,6 @@
 (def RPC-TIMEOUT 3000)
 (def DISPATCH-BUFFER-SIZE 64) ; # of incoming msgs to buffer
 
-(defn uuid
-  []
-  (str (random-uuid)))
-
 (defn- websocket-chan
   [url peer-id on-error on-connect]
   (go
@@ -61,7 +57,7 @@
 
 (defn event
   [{:keys [peer-chan] :as conn} event & args]
-  (let [e {:event event :args args :id (uuid)}]
+  (let [e {:event event :args args :id (random-uuid)}]
     (put! peer-chan e)))
 
 (defn- event-type-chan
@@ -90,7 +86,7 @@
   "Make an RPC request to the server. Returns a channel that will receive the result, or nil on error.
   (The error will be logged to the console.)"
   [{:keys [rpc-map* peer-chan timeout on-error] :as conn} fun & [args]]
-  (let [req-id (uuid)
+  (let [req-id (random-uuid)
         res-chan (async/chan)
         t-out (async/timeout (or timeout RPC-TIMEOUT))
         event {:event :rpc :id req-id :fn fun :args (or args [])}]
@@ -127,7 +123,7 @@
       :as args}]
   (go
     (let [url           (or url (format "ws://%s:%s/%s" host port path))
-          id            (uuid)
+          id            (random-uuid)
           peer-chan     (<! (websocket-chan url id on-error on-connect))
           dispatch-chan (async/chan DISPATCH-BUFFER-SIZE)
           event-chan    (async/pub dispatch-chan :event)
@@ -148,7 +144,7 @@
   published to from the connection."
   [{:keys [event-chan subscription-map* peer-chan] :as conn} topic & args]
   (let [flow-events (event-type-chan event-chan :publication (async/sliding-buffer 1))
-        id (uuid)
+        id (random-uuid)
         publication-chan (async/chan 1 (filter #(= id (:id %))))
         value-chan (async/chan 1 (map :value))
         event {:event :subscription

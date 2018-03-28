@@ -24,13 +24,17 @@
 
 (defn request
   [socket fn-name & args]
-  (send-msg socket {:event :rpc :id (java.util.UUID/randomUUID)
-                    :fn fn-name :args args}))
+  (send-msg socket {:event :rpc
+                    :id (java.util.UUID/randomUUID)
+                    :fn fn-name
+                    :args args}))
 
 (defn subscription
   [socket fn-name & args]
-  (send-msg socket {:event :subscription :id (java.util.UUID/randomUUID)
-                    :fn fn-name :args args}))
+  (send-msg socket {:event :subscription
+                    :id (java.util.UUID/randomUUID)
+                    :fn fn-name
+                    :args args}))
 
 (defn pq
   [m c]
