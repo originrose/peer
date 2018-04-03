@@ -76,8 +76,10 @@
   [event-chan rpc-map*]
   (let [rpc-events (event-type-chan event-chan :rpc-response)]
     (go-loop []
-      (let [{id :id :as event} (<! rpc-events)]
-        (when-let [res-chan (get @rpc-map* id)]
+      (let [{id :id :as event} (<! rpc-events)
+            id (str id)
+            rpc-map @rpc-map*]
+        (when-let [res-chan (get rpc-map id)]
           (>! res-chan event)
           (swap! rpc-map* dissoc id)))
       (recur))))
@@ -86,7 +88,7 @@
   "Make an RPC request to the server. Returns a channel that will receive the result, or nil on error.
   (The error will be logged to the console.)"
   [{:keys [rpc-map* peer-chan timeout on-error] :as conn} fun & [args]]
-  (let [req-id (random-uuid)
+  (let [req-id (str (random-uuid))
         res-chan (async/chan)
         t-out (async/timeout (or timeout RPC-TIMEOUT))
         event {:event :rpc :id req-id :fn fun :args (or args [])}]

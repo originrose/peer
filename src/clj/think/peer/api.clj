@@ -56,8 +56,8 @@
      [:h3 (apply str (for [args arglists]
                        (format "(%s %s)\n" name args)))]
      [:div.file-info
-      [:div.doc doc]
-      [:pre.source src]
+      [:pre.doc doc]
+      ;[:pre.source src]
       ;[:span.line-info (format "%s:%s" file line)]
       ]]))
 
@@ -65,21 +65,25 @@
   [{:keys [rpc event subscription]}]
   [:div.api-handler-docs
    [:h1 "API Documentation"]
-   [:div.events
-    [:h2 "Event Handlers"]
-    [:ul
-     (map-indexed (fn [i [k v]]
-                    ^{:key (str "event-" i)}(html-function-doc v))
-                  event)]]
-   [:div.functions
-    [:h2 "RPC Functions"]
-    [:ul
-     (map-indexed (fn [i [k v]]
-                    ^{:key (str "rpc-" i)}(html-function-doc v))
-                  rpc)]]
-   [:div.subscriptions
-    [:h2 "Subscriptions"]
-    [:ul
-     (map-indexed (fn [i [k v]]
-                    ^{:key (str "subscription-" i)}(html-function-doc v))
-                  subscription)]]])
+   (when event
+     [:div.events
+      [:h2 "Event Handlers"]
+      [:ul
+       (map-indexed (fn [i [k v]]
+                      ^{:key (str "event-" i)}(html-function-doc v))
+                    event)]])
+   (when rpc
+     [:div.functions
+      [:h2 "RPC Functions"]
+      [:ul
+       (map-indexed (fn [i [k v]]
+                      ^{:key (str "rpc-" i)}(html-function-doc v))
+                    rpc)]])
+   (when subscription
+     [:div.subscriptions
+      [:h2 "Subscriptions"]
+      [:ul
+       (map-indexed (fn [i [k v]]
+                      ^{:key (str "subscription-" i)}(html-function-doc v))
+                    subscription)]])])
+

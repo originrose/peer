@@ -10,6 +10,7 @@
     [ring.middleware.file :refer [wrap-file]]
     [bidi.ring :refer [make-handler]]
     [clojure.core.async :refer [<! >! go go-loop] :as async]
+    [cheshire.core :as json]
     [think.peer.api :as api]
     [think.peer.util :as util]
     [io.pedestal.interceptor.chain :as chain])
@@ -31,8 +32,9 @@
 
 (defn disconnect-all-peers
   [peers*]
-  (doseq [peer-id (keys @peers*)]
-    (disconnect-peer peers* peer-id)))
+  (when-let [peers @peers*]
+    (doseq [peer-id (keys peers)]
+      (disconnect-peer peers* peer-id))))
 
 (defn mapply
   "Apply a map as keyword args to a function.
@@ -108,11 +110,16 @@
               (go (>! chan response)))
             context)
    :error (fn [{:keys [chan request] :as context} error]
-            (let [response {:event :rpc-response :id (:id request)
-                            :error (str error)}]
+            (println "response error: " (apply str error "\ntrace: " (interpose "\n" (.getStackTrace error))))
+            (let [error (if (instance? Throwable error)
+                          (apply str error "\ntrace: " (interpose "\n" (.getStackTrace error)))
+                          (str error))
+                  response {:event :rpc-response :id (:id request)
+                            :error error}]
               (go (>! chan response))
               (assoc context :response response)))})
 
+(def err* (atom nil))
 
 (def rpc-handler
   {:name ::rpc-handler
@@ -130,7 +137,8 @@
                  context (assoc context :response response)]
              context)
            (catch Exception e
-             (log/error :peer e)
+             (reset! err* e)
+             (log/error :peer :error e)
              (assoc context :io.pedestal.interceptor.chain/error e)))
          (assoc context :io.pedestal.interceptor.chain/error (ex-info "Unhandled rpc-request" request)))))})
 
@@ -278,31 +286,45 @@
    :packet-format (or packet-format :transit-json)})
 
 
+(defn parse-request-body
+  [{:keys [content-type body] :as req}]
+  (cond
+    (= content-type "application/json")
+    (json/parse-stream (clojure.java.io/reader body) true)
+
+    (= content-type "application/transit+json")
+    (util/transit-bytes->edn (:body req))
+
+    :default
+    (throw (Exception. (str "Unsupported content-type: " content-type)))))
+
+
 (defn api-handler
   [api req]
-  (let [parsed (re-find #"api/v([0-9]+)/(.*)/(.*)" (:uri req))]
-    (if (some nil? parsed)
-      {:status  404
-       :headers {"Content-Type" "application/transit+json"}
-       :body    (util/edn->transit {:error (str "Invalid request URI: " (:uri req))})}
-      (let [[_ version msg-type fn-name] parsed
-            handler (get-in api [(keyword msg-type) (symbol fn-name)])]
-        (try
+  (try
+    (let [parsed (re-find #"api/v([0-9]+)/(.*)/(.*)" (:uri req))]
+      (if (some nil? parsed)
+        (throw (Exception. (str "Invalid request URI: " (:uri req))))
+        (let [[_ version msg-type fn-name] parsed
+              handler (get-in api [(keyword msg-type) (symbol fn-name)])]
           (if handler
-            (let [body (util/transit-bytes->edn (:body req))
+            (let [body (parse-request-body req)
                   id (:id body)
+                  body (assoc body :args [req (:args body)])
                   res-val (run-handler handler body)
                   res {:event :rpc-response :id id :result res-val}]
               {:status  200
                :headers {"Content-Type" "application/transit+json"}
                :body    (util/edn->transit res)})
-            {:status  501
-             :headers {"Content-Type" "application/transit+json"}
-             :body    (util/edn->transit {:error (str "Cannot find handler for request: " (:uri req))})})
-          (catch Exception e
-            {:status  500
-             :headers {"Content-Type" "application/transit+json"}
-             :body    (util/edn->transit {:error (str "error: " e)})}))))))
+            (throw (Exception. (str "Cannot find handler for request: " (:uri req))))))))
+    (catch Exception e
+      {:status  500
+       :body    (str "Error: " (.getMessage e))})))
+
+
+(defn api-doc-handler
+  [api-map req]
+  (page-template (api/html-handler-docs api-map)))
 
 
 (defn listen
