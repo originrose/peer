@@ -6,6 +6,7 @@
             [org.httpkit.client :as http]
             [think.peer.net :as net]
             [think.peer.api :as api]
+            [cheshire.core :as json]
             [io.pedestal.interceptor.chain :as chain]
             [test-api]
             [think.peer.util :as util]))
@@ -110,6 +111,12 @@
    :enter (fn [{:keys [request] :as context}]
             (assoc-in context [:request :args] (concat args (:args request))))})
 
+(defn prepend-request
+  []
+  {:name ::partial-args
+   :enter (fn [{:keys [request] :as context}]
+            (assoc-in context [:request :args] (concat [request] (:args request))))})
+
 (defn merge-response
   [v]
   {:name ::merge-response
@@ -125,12 +132,12 @@
   (let [server (net/listen {:listener (net/peer-listener
                                        {:api {:rpc {'test-handler #'test-api/test-handler}}
                                         :middleware [log-timer
-                                                     (partial-args [80])
+                                                     (prepend-request)
                                                      (merge-response {:foo 42})]})
                            :port 4242})]
     (try
       (let [[ch socket] (connect)
-            _ (request socket 'test-handler 20 100)
+            _ (request socket 'test-handler 80 20 100)
             response (util/transit->edn (<!! ch))]
         (is (= 200 (:result response)))
         (is (contains? response :response-time))
@@ -143,10 +150,25 @@
   (let [server (net/listen {:port 4242
                             :api-ns 'test-api})]
     (try
-      (let [msg (util/edn->transit {:id (util/uuid) :args [80 20 100]})
-            res (http/put "http://localhost:4242/api/v0/rpc/test-handler"
-                           {:body msg})
-            response (util/transit->edn (:body @res))]
-        (is (= 200 (:result response))))
+      (let [msg {:event :rpc
+                 :id (util/uuid)
+                 :fn "test-handler"
+                 :args [80 20 100]}
+            edn-msg (util/edn->transit msg)
+            json-msg (json/generate-string msg)
+            url "http://localhost:4242/api/v0/rpc/test-handler"
+            edn-res @(http/request {:method :put
+                                    :url url
+                                    :body edn-msg
+                                    :headers {"content-type" "application/transit+json"}})
+            json-res @(http/request {:method :put
+                                     :url url
+                                     :body json-msg
+                                     :headers {"content-type" "application/json"}})
+            edn-res (util/transit->edn (:body edn-res))
+            json-res (json/parse-string (:body json-res))]
+        (is (= 200 (:result edn-res)))
+        (is (= 200 (get json-res "result"))))
       (finally
         (net/close server)))))
+

@@ -110,7 +110,7 @@
               (go (>! chan response)))
             context)
    :error (fn [{:keys [chan request] :as context} error]
-            (println "response error: " (apply str error "\ntrace: " (interpose "\n" (.getStackTrace error))))
+            ;(println "response error: " (apply str error "\ntrace: " (interpose "\n" (.getStackTrace error))))
             (let [error (if (instance? Throwable error)
                           (apply str error "\ntrace: " (interpose "\n" (.getStackTrace error)))
                           (str error))
@@ -298,6 +298,21 @@
     :default
     (throw (Exception. (str "Unsupported content-type: " content-type)))))
 
+(defn encode-response-body
+  [{:keys [content-type] :as req} res body]
+  (let [encoded (cond
+                  (= content-type "application/json")
+                  (json/generate-string body)
+
+                  (= content-type "application/transit+json")
+                  (util/edn->transit body)
+
+                  :default
+                  (throw (Exception. (str "Unsupported content-type: " content-type))))]
+    (assoc res
+           :headers {"Content-Type" content-type}
+           :body encoded)))
+
 
 (defn api-handler
   [api req]
@@ -310,16 +325,14 @@
           (if handler
             (let [body (parse-request-body req)
                   id (:id body)
-                  body (assoc body :args [req (:args body)])
+                  body (assoc body :args (concat [req] (:args body)))
                   res-val (run-handler handler body)
-                  res {:event :rpc-response :id id :result res-val}]
-              {:status  200
-               :headers {"Content-Type" "application/transit+json"}
-               :body    (util/edn->transit res)})
+                  res {:event :rpc-response :id id :result res-val}
+                  encoded (encode-response-body req {:status  200} res)]
+              encoded)
             (throw (Exception. (str "Cannot find handler for request: " (:uri req))))))))
     (catch Exception e
-      {:status  500
-       :body    (str "Error: " (.getMessage e))})))
+      (encode-response-body req {:status 500} {:error (.getMessage e)}))))
 
 
 (defn api-doc-handler
