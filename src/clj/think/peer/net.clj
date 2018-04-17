@@ -110,7 +110,6 @@
               (go (>! chan response)))
             context)
    :error (fn [{:keys [chan request] :as context} error]
-            ;(println "response error: " (apply str error "\ntrace: " (interpose "\n" (.getStackTrace error))))
             (let [error (if (instance? Throwable error)
                           (apply str error "\ntrace: " (interpose "\n" (.getStackTrace error)))
                           (str error))
@@ -299,13 +298,24 @@
     (throw (Exception. (str "Unsupported content-type: " content-type)))))
 
 (defn encode-response-body
-  [{:keys [content-type] :as req} res body]
-  (let [encoded (cond
+  [{:keys [headers] :as req} res body]
+  (let [accept (get headers "accept")
+        content-type (get headers "content-type")
+        encoded (cond
+                  (= accept "application/json")
+                  (json/generate-string body {:key-fn name})
+
+                  (= accept "application/transit+json")
+                  (util/edn->transit body)
+
                   (= content-type "application/json")
-                  (json/generate-string body)
+                  (json/generate-string body {:key-fn name})
 
                   (= content-type "application/transit+json")
                   (util/edn->transit body)
+
+                  (nil? content-type)
+                  (json/generate-string body {:key-fn name})
 
                   :default
                   (throw (Exception. (str "Unsupported content-type: " content-type))))]
@@ -321,11 +331,14 @@
       (if (some nil? parsed)
         (throw (Exception. (str "Invalid request URI: " (:uri req))))
         (let [[_ version msg-type fn-name] parsed
-              handler (get-in api [(keyword msg-type) (symbol fn-name)])]
+              handler-key [(keyword msg-type) (symbol fn-name)]
+              handler (get-in api handler-key)]
           (if handler
             (let [body (parse-request-body req)
                   id (:id body)
-                  body (assoc body :args (concat [req] (:args body)))
+                  body (if-let [args (:args body)]
+                         (assoc body :args (conj [req] (:args body)))
+                         (assoc body :args [req]))
                   res-val (run-handler handler body)
                   res {:event :rpc-response :id id :result res-val}
                   encoded (encode-response-body req {:status  200} res)]

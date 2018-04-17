@@ -28,7 +28,7 @@
 
 (defn- with-partial-args
   "Takes a function f and variadic args. Creates a new partial function closing
-  over those args aswell as adding a partial-args value into the functions meta data.
+  over those args as well as adding a partial-args value into the functions meta data.
   Also transfers the input functions meta-data to the new partial version with the addition
   over partial-args."
   [f & args]
