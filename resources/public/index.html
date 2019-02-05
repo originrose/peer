@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1">
+<meta http-equiv="X-UA-Compatible" content="chrome=1" />
+<base target="_blank">
+<title>Peer</title>
+<link rel="stylesheet" href="css/style.css" />
+
+<script>
+/* Put the adapter/polyfills here... */
+
+function UnsupportedFeatureException(feature, msg) {
+    this.message = msg;
+    this.name    = "UnsupportedFeature:" + feature;
+}
+
+navigator.getUserMedia = navigator.getUserMedia || 
+                         navigator.webkitGetUserMedia || 
+                         navigator.mozGetUserMedia || 
+                         navigator.msGetUserMedia;
+
+if (!navigator.getUserMedia) {
+    throw new UnsupportedFeatureException("getUserMedia", "no getUserMedia available!");
+}
+
+RTCPeerConnection = window.RTCPeerConnection || webkitRTCPeerConnection;
+
+</script>
+
+</head>
+<body>
+<div id="container">
+    <h1>Peer</h1>
+    <div id="video-demo">
+      <h3>Video Demo</h3>
+        <div>
+            <button id="start-button">Start</button>
+            <button id="call-button">Call</button>
+            <button id="hangup-button">Hang Up</button>
+        </div>
+
+        <video id="local-video" autoplay></video>
+        <video id="remote-video" autoplay></video>
+    </div>
+
+    <!--
+    <div id="peer-data-demo">
+      <h3>Data Demo</h3>
+        <div>
+            <button id="start-txt-button">Start</button>
+            <button id="send-txt-button">Call</button>
+            <button id="stop-txt-button">Hang Up</button>
+        </div>
+        <div id="send-txt">
+            <h3>send</h3>
+            <textarea id="text-to-send" disabled></textarea>
+        </div>
+        <div id="recv-txt">
+            <h3>receive</h3>
+            <textarea id="text-received" disabled></textarea>
+        </div>
+    </div>
+    -->
+
+    <div id="peer-text"></div>
+</div>
+<script src="js/app.js"></script>
+</body>
+</html>
