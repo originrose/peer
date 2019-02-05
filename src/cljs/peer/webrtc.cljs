@@ -1,6 +1,9 @@
-(ns think.peer.webrtc
+(ns peer.webrtc
   (:require-macros [cljs.core.async.macros :refer [go alt!]])
   (:require [cljs.core.async :refer [chan >! <! put! timeout close!]]))
+
+; NOTE: this is some experimental WebRTC code which sets up direct browser to
+; browser p2p connections for video, audio, and data.
 
 (defn select-element
   [id]

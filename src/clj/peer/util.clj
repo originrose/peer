@@ -1,4 +1,4 @@
-(ns think.peer.util
+(ns peer.util
   (:require [cognitect.transit :as transit])
   (:import [java.io ByteArrayInputStream ByteArrayOutputStream]))
 

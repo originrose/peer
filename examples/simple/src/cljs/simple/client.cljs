@@ -4,7 +4,7 @@
             [goog.events :as events]
             [reagent.core :as reagent]
             [cljs.core.async :refer [put! chan <! >! timeout close!]]
-            [think.peer.net :as net]))
+            [peer.net :as net]))
 
 (enable-console-print!)
 

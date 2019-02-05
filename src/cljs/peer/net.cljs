@@ -1,4 +1,4 @@
-(ns think.peer.net
+(ns peer.net
   (:require
     [taoensso.timbre :as log]
     [chord.client :refer [ws-ch]]

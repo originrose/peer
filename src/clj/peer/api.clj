@@ -1,7 +1,7 @@
-(ns think.peer.api
+(ns peer.api
   (:require [clojure.repl :as repl]
             [clojure.string :as string]
-            [think.peer.util :as util]
+            [peer.util :as util]
             clojure.test))
 
 (defn namespaces

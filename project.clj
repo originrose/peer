@@ -1,11 +1,11 @@
-(defproject thinktopic/think.peer "0.3.5"
+(defproject peer "0.4.0-SNAPSHOT"
   :description "P2P - Clojure(Script) style"
-  :dependencies [[org.clojure/clojure "1.9.0-alpha14"]
-                 [org.clojure/clojurescript "1.9.293"]
-                 [org.clojure/core.async "0.3.442"]
-                 [io.pedestal/pedestal.interceptor "0.5.2"]
-                 [com.taoensso/timbre "4.8.0"]
-                 [http-kit "2.2.0"]
+  :dependencies [[org.clojure/clojure "1.9.0"]
+                 [org.clojure/clojurescript "1.10.516"]
+                 [org.clojure/core.async "0.4.490"]
+                 [io.pedestal/pedestal.interceptor "0.5.5"]
+                 [com.taoensso/timbre "4.10.0"]
+                 [http-kit "2.3.0"]
                  [jarohen/chord "0.8.1" :exclusions [org.clojure/tools.reader]]
                  [ring/ring-defaults "0.2.3"]
                  [bidi "2.0.16"]
@@ -27,13 +27,4 @@
                   ["vcs" "commit"]
                   ["vcs" "push"]]
 
-  :clean-targets ^{:protect false} [:target-path "figwheel_server.log" "resources/public/js/test/"]
-
-  :repositories  {"snapshots" {:url "s3p://thinktopic.jars/snapshots/"
-                               :no-auth true
-                               :releases false
-                               :sign-releases false}
-                  "releases" {:url "s3p://thinktopic.jars/releases/"
-                              :no-auth true
-                              :snapshots false
-                              :sign-releases false}})
+  :clean-targets ^{:protect false} [:target-path "figwheel_server.log" "resources/public/js/test/"])

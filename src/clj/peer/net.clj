@@ -1,4 +1,4 @@
-(ns think.peer.net
+(ns peer.net
   (:require
     [taoensso.timbre :as log]
     [chord.http-kit :refer [with-channel]]
@@ -11,8 +11,8 @@
     [bidi.ring :refer [make-handler]]
     [clojure.core.async :refer [<! >! go go-loop] :as async]
     [cheshire.core :as json]
-    [think.peer.api :as api]
-    [think.peer.util :as util]
+    [peer.api :as api]
+    [peer.util :as util]
     [io.pedestal.interceptor.chain :as chain])
   (:import [org.fressian.handlers WriteHandler ReadHandler]
            [org.fressian.impl ByteBufferInputStream BytesOutputStream]))
@@ -54,7 +54,7 @@
     (cond
       ok?       (apply handler args)
       optional? (handler)
-      ;; TODO: This is not surfacing from a System using think.peer...
+      ;; TODO: This is not surfacing from a System using peer...
       :default (throw (ex-info (str "Incorrect number of arguments passed to function: "
                                     n " for function " handler " with arglists " arglists)
                                {})))))

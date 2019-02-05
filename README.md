@@ -1,4 +1,4 @@
-# think.peer
+# Peer
 
 This is a networking library for Clojure and ClojureScript providing events, RPC
 calls, and subscriptions to remote channels.  From Clojure you can point to a
@@ -9,14 +9,14 @@ requests or as a websocket interface.
 
 Add the library to your dependencies like so:
 
-    [thinktopic/think.peer "0.3.0"]
+    [peer "0.4.0"]
 
 In Clojure you point to a namespace to expose its functions as
 event/rpc/subscription handlers.
 
     (ns example.app.handler
-      (:require [think.peer.net :as net]
-                [think.peer.api :as peer-api]))
+      (:require [peer.net :as net]
+                [peer.api :as peer-api]))
 
     ...
 
@@ -39,7 +39,7 @@ function.  It returns a channel onto which the result of the request will be
 placed.
 
     (ns example.app.core
-      (:require [think.peer.net :as net]
+      (:require [peer.net :as net]
                 [cljs.core.async :as async :refer [<! >! put!]])
       (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
@@ -57,11 +57,11 @@ placed.
 ## HTTP Requests
 
 The same functions exposed over a websocket for :rpc and :event handlers can
-also be served as regular HTTP endpoints using the think.peer.api/api-handler
+also be served as regular HTTP endpoints using the peer.api/api-handler
 function.  This function is a typical ring handler that takes the API map and
 an HTTP request, and it returns an HTTP response.
 
-If you use think.peer.net/listen it will automatically setup the api handler.
+If you use peer.net/listen it will automatically setup the api handler.
 A full example can be seen in the http-api-test unit test.
 
     (net/listen {:port 4242 :api-ns 'test-api})
@@ -76,7 +76,7 @@ Now you can access a test-handler function like this:
 
 ## Documentation
 
-If you use the think.peer.net/listen function to setup your API then html
+If you use the peer.net/listen function to setup your API then html
 documentation will automatically be generated and served at /docs.
 
     (def s (net/listen {:port 4242 :api-ns 'test-api}))
