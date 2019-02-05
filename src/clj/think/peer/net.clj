@@ -70,14 +70,20 @@
          context)
        (assoc context :io.pedestal.interceptor.chain/error (ex-info (str "Unhandled event") request))))})
 
-
+; TODO: test error handling with subscriptions so that we get useful output
+; logged on the server and on the client.
 (def subscription-handler
   {:name ::subscription-handler
    :enter
    (fn [{:keys [peers* peer-id api chan request] :as context}]
      (if-let [handler (get-in api [:subscription (:fn request)])]
-       (let [res (apply handler (:args request))
-             res (if (map? res) res {:chan res})
+       (let [res (try
+                   (apply handler (:args request))
+                   (catch Exception e
+                     (log/error e)))
+             res (if (map? res)
+                   res
+                   {:chan res})
              pub-chan (:chan res)
              id (:id request)]
          (if (satisfies? clojure.core.async.impl.protocols/ReadPort pub-chan)
@@ -99,7 +105,6 @@
        (swap! peers* update-in [peer-id :subscriptions] dissoc id)
        (when (fn? stop)
          (stop))
-       (async/close! chan)
        context))})
 
 
@@ -137,7 +142,9 @@
              context)
            (catch Exception e
              (reset! err* e)
-             (log/error :peer :error e)
+             (log/error :peer
+                        :error e
+                        :stacktrace (with-out-str (clojure.stacktrace/print-stack-trace e)))
              (assoc context :io.pedestal.interceptor.chain/error e)))
          (assoc context :io.pedestal.interceptor.chain/error (ex-info "Unhandled rpc-request" request)))))})
 

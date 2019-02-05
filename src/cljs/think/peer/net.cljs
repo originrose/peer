@@ -21,7 +21,7 @@
   (go
     (let [conn (<! (ws-ch url {:format :transit-json}))
           {:keys [ws-channel error]} conn
-          _ (>! ws-channel {:type :connect :client-id peer-id})
+          _ (>! ws-channel {:type :connect :peer-id peer-id})
           {:keys [message error]} (<! ws-channel)]
       (if error
         (when on-error
@@ -162,8 +162,9 @@
 (defn unsubscribe
   "Unsubscribe from a remote topic channel for a connection."
   [{:keys [subscription-map* peer-chan] :as conn} ch]
-  (let [id (get subscription-map* ch)
+  (let [id (get @subscription-map* ch)
         event {:event :unsubscription :id id}]
     (put! peer-chan event)
+    (async/close! ch)
     (swap! subscription-map* dissoc id)))
 
