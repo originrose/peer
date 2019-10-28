@@ -1,4 +1,4 @@
-(defproject peer "0.4.1"
+(defproject peer "0.4.2-SNAPSHOT"
   :description "P2P - Clojure(Script) style"
   :dependencies [[org.clojure/clojure "1.10.0"]
                  [org.clojure/clojurescript "1.10.516"]
