@@ -6,9 +6,7 @@
                  [io.pedestal/pedestal.interceptor "0.5.2"]
                  [com.taoensso/timbre "4.10.0"]
                  [http-kit "2.3.0"]
-                 [jarohen/chord "0.8.1" :exclusions [org.clojure/tools.reader
-                                                     com.cognitect/transit-cljs
-                                                     com.cognitect/transit-clj]]
+                 [jarohen/chord "0.8.1" :exclusions [org.clojure/tools.reader]]
                  [ring/ring-defaults "0.2.3"]
                  [bidi "2.0.16"]
                  [stylefruits/gniazdo "1.0.1"]
