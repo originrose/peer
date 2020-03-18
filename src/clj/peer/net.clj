@@ -129,24 +129,27 @@
   {:name ::rpc-handler
    :enter
    (fn [{:keys [api middleware request] :as context}]
-     (go
-       (if-let [handler (get-in api [:rpc (:fn request)])]
-         (try
-           (let [v (run-handler handler request)
-                 id (:id request)
-                 res-val (if (satisfies? clojure.core.async.impl.protocols/ReadPort v)
-                           (<! v)
-                           v)
-                 response {:event :rpc-response :id id :result res-val}
-                 context (assoc context :response response)]
-             context)
-           (catch Exception e
-             (reset! err* e)
-             (log/error :peer
-                        :error e
-                        :stacktrace (with-out-str (clojure.stacktrace/print-stack-trace e)))
-             (assoc context :io.pedestal.interceptor.chain/error e)))
-         (assoc context :io.pedestal.interceptor.chain/error (ex-info "Unhandled rpc-request" request)))))})
+     (println :peer.net/rpc-handler (keys request) (-> request :error-fn))
+     (if-let [error-handler (-> request :error-fn)]
+       (assoc context :response ((resolve error-handler)))
+       (go
+         (if-let [handler (get-in api [:rpc (:fn request)])]
+           (try
+               (let [v (run-handler handler request)
+                     id (:id request)
+                     res-val (if (satisfies? clojure.core.async.impl.protocols/ReadPort v)
+                               (<! v)
+                               v)
+                     response {:event :rpc-response :id id :result res-val}
+                     context (assoc context :response response)]
+                 context)
+             (catch Exception e
+               (reset! err* e)
+               (log/error :peer
+                          :error e
+                          :stacktrace (with-out-str (clojure.stacktrace/print-stack-trace e)))
+               (assoc context :io.pedestal.interceptor.chain/error e)))
+           (assoc context :io.pedestal.interceptor.chain/error (ex-info "Unhandled rpc-request" request))))))})
 
 
 (defn API-HANDLERS
