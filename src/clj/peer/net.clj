@@ -129,27 +129,24 @@
   {:name ::rpc-handler
    :enter
    (fn [{:keys [api middleware request] :as context}]
-     (println :peer.net/rpc-handler (keys request) (-> request :error-fn))
-     (if-let [error-handler (-> request :error-fn)]
-       (assoc context :response ((resolve error-handler)))
-       (go
-         (if-let [handler (get-in api [:rpc (:fn request)])]
-           (try
-               (let [v (run-handler handler request)
-                     id (:id request)
-                     res-val (if (satisfies? clojure.core.async.impl.protocols/ReadPort v)
-                               (<! v)
-                               v)
-                     response {:event :rpc-response :id id :result res-val}
-                     context (assoc context :response response)]
-                 context)
-             (catch Exception e
-               (reset! err* e)
-               (log/error :peer
-                          :error e
-                          :stacktrace (with-out-str (clojure.stacktrace/print-stack-trace e)))
-               (assoc context :io.pedestal.interceptor.chain/error e)))
-           (assoc context :io.pedestal.interceptor.chain/error (ex-info "Unhandled rpc-request" request))))))})
+     (go
+       (if-let [handler (get-in api [:rpc (:fn request)])]
+         (try
+             (let [v (run-handler handler request)
+                   id (:id request)
+                   res-val (if (satisfies? clojure.core.async.impl.protocols/ReadPort v)
+                             (<! v)
+                             v)
+                   response {:event :rpc-response :id id :result res-val}
+                   context (assoc context :response response)]
+               context)
+           (catch Exception e
+             (reset! err* e)
+             (log/error :peer
+                        :error e
+                        :stacktrace (with-out-str (clojure.stacktrace/print-stack-trace e)))
+             (assoc context :io.pedestal.interceptor.chain/error e)))
+         (assoc context :io.pedestal.interceptor.chain/error (ex-info "Unhandled rpc-request" request)))))})
 
 
 (defn API-HANDLERS
@@ -170,7 +167,7 @@
 
 (defn- api-router
   "Setup a router go-loop to handle received messages from a peer."
-  [{:keys [api* peers* on-disconnect middleware] :as listener}
+  [{:keys [api* peers* on-disconnect middleware api-middleware] :as listener}
    peer-id]
   (let [peer (get @peers* peer-id)
         peer-chan (:chan peer)]
@@ -199,7 +196,7 @@
 
   (connect-listener listener request)
   "
-  [{:keys [peers* api* on-error on-connect packet-format] :as listener} req]
+  [{:keys [peers* api* on-error on-connect packet-format api-middleware] :as listener} req]
   (with-channel req ws-ch {:format packet-format}
     (go
       (try
@@ -285,14 +282,15 @@
      :middleware [request-logger]
      :on-error #(log/error %)})
   "
-  [{:keys [api middleware on-error on-connect on-disconnect packet-format]}]
+  [{:keys [api middleware on-error on-connect on-disconnect packet-format api-middleware]}]
   {:peers* (atom {})
    :api* (if (atom? api) api (atom api))
    :middleware middleware
    :on-error (or on-error #(log/error "Error: " %))
    :on-connect on-connect
    :on-disconnect on-disconnect
-   :packet-format (or packet-format :transit-json)})
+   :packet-format (or packet-format :transit-json)
+   :api-middleware api-middleware})
 
 
 (defn parse-request-body
