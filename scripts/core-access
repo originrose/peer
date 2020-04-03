@@ -1,5 +1,5 @@
 #!/bin/bash
-export VAULT_ADDR='https://thinktopic.com:8200'
+export VAULT_ADDR='https://vault.originrose.com:8200'
 
 echo "Requesting AWS creds..."
 creds=`vault read aws/sts/core-sts`
