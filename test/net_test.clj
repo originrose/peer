@@ -4,12 +4,12 @@
             [taoensso.timbre :as log]
             [gniazdo.core :as ws]
             [org.httpkit.client :as http]
-            [think.peer.net :as net]
-            [think.peer.api :as api]
+            [peer.net :as net]
+            [peer.api :as api]
             [cheshire.core :as json]
             [io.pedestal.interceptor.chain :as chain]
             [test-api]
-            [think.peer.util :as util]))
+            [peer.util :as util]))
 
 (defn send-msg
   [socket msg]
@@ -171,4 +171,3 @@
         (is (= 200 (get json-res "result"))))
       (finally
         (net/close server)))))
-
