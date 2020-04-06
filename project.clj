@@ -10,7 +10,7 @@
                  [ring/ring-defaults "0.2.3"]
                  [bidi "2.0.16"]
                  [stylefruits/gniazdo "1.0.1"]
-                 [com.cognitect/transit-clj "0.8.300"]
+                 [com.cognitect/transit-clj "1.0.324"]
                  [com.cognitect/transit-cljs "0.8.256"]]
 
   :source-paths ["src/clj" "src/cljs"]

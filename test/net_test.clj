@@ -4,12 +4,12 @@
             [taoensso.timbre :as log]
             [gniazdo.core :as ws]
             [org.httpkit.client :as http]
-            [think.peer.net :as net]
-            [think.peer.api :as api]
+            [peer.net :as net]
+            [peer.api :as api]
             [cheshire.core :as json]
             [io.pedestal.interceptor.chain :as chain]
             [test-api]
-            [think.peer.util :as util]))
+            [peer.util :as util]))
 
 (defn send-msg
   [socket msg]
@@ -83,7 +83,6 @@
       (finally
         (net/close server)))))
 
-
 (deftest pubsub-test
   (let [server (net/listen {:listener (net/peer-listener
                                         {:api (api/ns-api 'test-api)})
@@ -137,7 +136,7 @@
                            :port 4242})]
     (try
       (let [[ch socket] (connect)
-            _ (request socket 'test-handler 80 20 100)
+            _ (request socket 'test-handler [80 20 100])
             response (util/transit->edn (<!! ch))]
         (is (= 200 (:result response)))
         (is (contains? response :response-time))
@@ -171,4 +170,3 @@
         (is (= 200 (get json-res "result"))))
       (finally
         (net/close server)))))
-
