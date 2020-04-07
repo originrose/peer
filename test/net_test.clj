@@ -83,7 +83,6 @@
       (finally
         (net/close server)))))
 
-
 (deftest pubsub-test
   (let [server (net/listen {:listener (net/peer-listener
                                         {:api (api/ns-api 'test-api)})
@@ -137,7 +136,7 @@
                            :port 4242})]
     (try
       (let [[ch socket] (connect)
-            _ (request socket 'test-handler 80 20 100)
+            _ (request socket 'test-handler [80 20 100])
             response (util/transit->edn (<!! ch))]
         (is (= 200 (:result response)))
         (is (contains? response :response-time))

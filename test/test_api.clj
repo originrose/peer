@@ -15,7 +15,7 @@
 
 (defn ^{:api/type :rpc}
   test-handler
-  [req v a b]
+  [req [v a b]]
   (+ v a b))
 
 (defn ^{:api/type :rpc}
