@@ -33,9 +33,9 @@
           ws-channel)))))
 
 (defn- dispatch-events
-  [server-chan dispatch-chan on-event on-error]
   "Dispatch messages from server socket onto the event chan, where
   they can easily be subscribed to by :event type. "
+  [server-chan dispatch-chan on-event on-error]
   (go-loop []
     (let [packet (<! server-chan)
           {:keys [message error]} packet]
@@ -105,7 +105,7 @@
 
           ; Got response
           (and (= port res-chan)
-               (:result v))      (:result v)
+               (not (nil? (:result v))))      (:result v)
 
           ; Got error
           (and (= port res-chan)
