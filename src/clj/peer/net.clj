@@ -167,7 +167,7 @@
 
 (defn- api-router
   "Setup a router go-loop to handle received messages from a peer."
-  [{:keys [api* peers* on-disconnect middleware] :as listener}
+  [{:keys [api* peers* on-disconnect middleware rpc-responder] :as listener}
    peer-id]
   (let [peer (get @peers* peer-id)
         peer-chan (:chan peer)]
@@ -282,14 +282,15 @@
      :middleware [request-logger]
      :on-error #(log/error %)})
   "
-  [{:keys [api middleware on-error on-connect on-disconnect packet-format]}]
+  [{:keys [api middleware on-error on-connect on-disconnect packet-format custom-rpc-responder]}]
   {:peers* (atom {})
    :api* (if (atom? api) api (atom api))
    :middleware middleware
    :on-error (or on-error #(log/error "Error: " %))
    :on-connect on-connect
    :on-disconnect on-disconnect
-   :packet-format (or packet-format :transit-json)})
+   :packet-format (or packet-format :transit-json)
+   :rpc-responder (or custom-rpc-responder rpc-responder)})
 
 
 (defn parse-request-body
