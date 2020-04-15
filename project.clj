@@ -1,4 +1,4 @@
-(defproject peer "0.4.2"
+(defproject peer "0.4.2-SNAPSHOT"
   :description "P2P - Clojure(Script) style"
   :dependencies [[org.clojure/clojure "1.10.0"]
                  [org.clojure/clojurescript "1.10.516"]
@@ -15,7 +15,7 @@
 
   :source-paths ["src/clj" "src/cljs"]
 
-  :plugins [[s3-wagon-private "1.3.0"]]
+  :plugins [[s3-wagon-private "1.3.4"]]
 
   :profiles {:test {:dependencies []}}
 
@@ -29,16 +29,12 @@
                   ["vcs" "push"]]
 
   :clean-targets ^{:protect false} [:target-path "figwheel_server.log" "resources/public/js/test/"]
-
   :repositories  {"snapshots" {:url "s3p://thinktopic.jars/snapshots/"
                                :no-auth true
                                :releases false
-                               :sign-releases false
-                               :username      :env/AWS_ACCESS_KEY_ID
-                               :passphrase    :env/AWS_SECRET_ACCESS_KEY}
+                               :sign-releases false}
                   "releases" {:url "s3p://thinktopic.jars/releases/"
                               :no-auth true
                               :snapshots false
-                              :sign-releases false
-                              :username      :env/AWS_ACCESS_KEY_ID
-                              :passphrase    :env/AWS_SECRET_ACCESS_KEY}})
+                              :sign-releases false}}
+  )
