@@ -142,9 +142,7 @@
              context)
            (catch Exception e
              (reset! err* e)
-             (log/error :peer
-                        :error e
-                        :stacktrace (with-out-str (clojure.stacktrace/print-stack-trace e)))
+             (log/error e)
              (assoc context :io.pedestal.interceptor.chain/error e)))
          (assoc context :io.pedestal.interceptor.chain/error (ex-info "Unhandled rpc-request" request)))))})
 
@@ -353,6 +351,7 @@
               encoded)
             (throw (Exception. (str "Cannot find handler for request: " (:uri req))))))))
     (catch Exception e
+      (log/error e)
       (encode-response-body req {:status 500} {:error (.getMessage e)}))))
 
 
