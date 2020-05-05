@@ -144,7 +144,7 @@
              (reset! err* e)
              (log/error e)
              (assoc context :io.pedestal.interceptor.chain/error e)))
-         (assoc context :io.pedestal.interceptor.chain/error (ex-info "Unhandled rpc-request" request)))))})
+         (assoc context :io.pedestal.interceptor.chain/error (ex-info "Unhandled rpc-request" (select-keys request [:fn]))))))})
 
 
 (defn API-HANDLERS
