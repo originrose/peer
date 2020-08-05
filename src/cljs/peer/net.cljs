@@ -100,8 +100,10 @@
           ; The request timed out
           (= port t-out) (do
                            (swap! rpc-map* dissoc req-id)
-                           (if on-error
-                             (on-error (assoc event :error :timeout))))
+                           (when on-error
+                             (on-error (assoc event :error :timeout)))
+                           {:event event
+                            :peer-error :timout})
 
           ; Got response
           (and (= port res-chan)
@@ -109,8 +111,10 @@
 
           ; Got error
           (and (= port res-chan)
-               (:error v)) (if on-error
-                             (on-error (merge event v))))))))
+            (:error v)) (do (when on-error
+                              (on-error (merge event v)))
+                            {:event event
+                             :peer-error (:error v)}))))))
 
 ; TODO: connect up the API so it works the same on the client as the server,
 ; allowing the server to call functions and make subscriptions on the client.
@@ -167,4 +171,3 @@
     (put! peer-chan event)
     (async/close! ch)
     (swap! subscription-map* dissoc id)))
-
